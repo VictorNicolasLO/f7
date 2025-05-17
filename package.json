@@ -1,0 +1,14 @@
+{
+  "name": "flash7",
+  "module": "index.ts",
+  "type": "module",
+  "devDependencies": {
+    "@types/bun": "latest"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  },
+  "dependencies": {
+    "k-state": "^1.0.1"
+  }
+}
