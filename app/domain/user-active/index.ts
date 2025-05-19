@@ -2,13 +2,13 @@ import { KActor } from "../../../infrastructure"
 
 
 export type UserActiveState = {
-    lastLogin: Date, username:string
+    lastLogin: string, username:string
 }
 
 export class UserActive extends KActor {
     state!: UserActiveState
 
-    setActive(date: Date, username: string) {
+    setActive(date: string, username: string) {
         this.state = {
             lastLogin: date,
             username

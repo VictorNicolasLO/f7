@@ -21,7 +21,7 @@ await admin.createTopics({
     topics: [{
         topic: 'ustest',
         numPartitions: 10,
-        replicationFKActor: 1
+        replicationFactor: 1
     }]
 })
 await admin.disconnect()
