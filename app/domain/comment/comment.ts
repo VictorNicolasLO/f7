@@ -13,7 +13,6 @@ export class Comment extends KActor {
     state!: CommentState
 
     comment(content: string, postKey: string, userKey: string) {
-
         if (!this.state) {
             this.state = {
                 content,

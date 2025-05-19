@@ -1,11 +1,4 @@
-import { Post } from "../app/domain/post"
-export type Ref<T> = Pick<T, Exclude<keyof T,  "state" | "ref" |"key">>
-export abstract class KActor {
-    key!:string
-    ref<T>(clz: new ()=> T, key: string): Ref<T>{
-        return new clz()
-    }
-}
+export * from './kactor'
 
 export type QueryPrepResponse = {
     store: string,
@@ -61,8 +54,4 @@ export const query = <T>(queryExec:(queryArgs: T)=> QueryExecResult)=> {
 
 export type QueryStore = {
     query:  (params:QueryParams)=> Promise<{ key:string, sortKey: string, data: any }[]>
-}
-export type KActorBus = {
-    send: (cb:(ref: <T>(clz: new ()=> T, key: string) => Ref<T> )=> any) => Promise<void>
-    
 }
