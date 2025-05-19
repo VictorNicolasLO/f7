@@ -1,4 +1,4 @@
-import { Actor } from "../../../infrastructure"
+import { KActor } from "../../../infrastructure"
 import { FollowersChunk } from "../followers-chunk"
 import { PostMetrics } from "../post-metrics/post-metrics"
 import { UserFollowers } from "../user-followers/user-followers"
@@ -12,7 +12,7 @@ export type FollowerState = {
 const FOLLOWER_PART_KEY = 0
 const FOLLOWED_PART_KEY = 1
 
-export class Follower extends Actor {
+export class Follower extends KActor {
     state!: FollowerState
 
     follow() {

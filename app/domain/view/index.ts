@@ -1,11 +1,11 @@
-import { Actor } from "../../../infrastructure"
+import { KActor } from "../../../infrastructure"
 import { PostMetrics } from "../post-metrics/post-metrics"
 
-// filepath: /Users/victornicolaslizarragaochoa/projects/flash7/app/actors/view/index.ts
+// filepath: /Users/victornicolaslizarragaochoa/projects/flash7/app/KActors/view/index.ts
 
 export type ViewState = Boolean
 
-export class View extends Actor {
+export class View extends KActor {
     state!: ViewState
 
     view() {

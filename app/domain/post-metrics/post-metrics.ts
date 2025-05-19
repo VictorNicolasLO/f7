@@ -1,6 +1,6 @@
-import { Actor } from "../../../infrastructure"
+import { KActor } from "../../../infrastructure"
 
-// filepath: /Users/victornicolaslizarragaochoa/projects/flash7/app/actors/post-metrics/post-metrics.ts
+// filepath: /Users/victornicolaslizarragaochoa/projects/flash7/app/KActors/post-metrics/post-metrics.ts
 
 export type PostMetricsState = {
     likeCount: number
@@ -15,7 +15,7 @@ const defaultState: PostMetricsState = {
     viewsCount: 0
 }
 
-export class PostMetrics extends Actor {
+export class PostMetrics extends KActor {
     state!: PostMetricsState
 
     incrementLikes() {

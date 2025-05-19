@@ -1,4 +1,4 @@
-import { Actor } from "../../../infrastructure"
+import { KActor } from "../../../infrastructure"
 import { PostMetrics } from "../post-metrics/post-metrics"
 
 export type LikeState = {
@@ -8,7 +8,7 @@ export type LikeState = {
 const USER_PART = 0
 const POST_PART = 1
 
-export class Like extends Actor{
+export class Like extends KActor{
     state!: LikeState
 
     like() {
