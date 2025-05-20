@@ -1,7 +1,7 @@
 import { Kafka } from 'kafkajs';
-import { http2Client } from './http2-client';
+import { createHttp2Client } from './http2-client';
 import type { KActor } from './kactor';
-import { createHash } from 'node:crypto'
+import { getPartition } from './utils';
 
 export type QueryPrepResponse = {
     store: string,
@@ -10,8 +10,8 @@ export type QueryPrepResponse = {
     data: any,
 }
 type ViewRes = {
-    clz: new () => unknown,
-    viewExec: (key: string, state: unknown) => QueryPrepResponse,
+    clz: new () => any,
+    viewExec: (key: string, state: any) => QueryPrepResponse,
 }
 export const view = <T extends { state: unknown }>(clz: new () => T, viewExec: (key: string, state: T['state']) => QueryPrepResponse) => {
     return {
@@ -20,15 +20,7 @@ export const view = <T extends { state: unknown }>(clz: new () => T, viewExec: (
     }
 }
 
-function getPartition(stringId: string, N: number, salt: string = '') {
-    // Create an MD5 hash of the stringId
-    const hash = createHash('md5').update(stringId + salt).digest('hex');
-    // Convert the hex hash to an integer
-    const intHash = BigInt('0x' + hash);
-    // Get the partition number
-    const partition = Number(intHash % BigInt(N));
-    return partition;
-}
+
 
 const SNAPTHOT_PARTITIONS = 10
 export const startViewHandler = async (
@@ -44,7 +36,7 @@ export const startViewHandler = async (
 
     const viewsByActor = kActors.map((clz) => views.filter((view) => view.clz === clz))
 
-    const shardClients = await Promise.all(storeShards.map((shard) => http2Client(shard)));
+    const shardClients = await Promise.all(storeShards.map((shard) => createHttp2Client(shard)));
 
 
 
@@ -59,6 +51,7 @@ export const startViewHandler = async (
             eachBatchAutoResolve: true,
             autoCommit: true,
             eachBatch: async ({ batch }) => {
+                console.log('batch', batch.messages.length)
                 const messages = batch.messages;
                 await Promise.all(messages.map(async ({ key, value }) => {
                     if (!key || !value) {

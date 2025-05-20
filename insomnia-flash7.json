@@ -1,0 +1,189 @@
+{
+  "_type": "export",
+  "__export_format": 4,
+  "__export_date": "2025-05-20T00:00:00.000Z",
+  "__export_source": "github-copilot-flash7-insomnia",
+  "resources": [
+    {
+      "_id": "wrk_1",
+      "created": 1680000000000,
+      "description": "Workspace for Flash7 API",
+      "modified": 1680000000000,
+      "name": "Flash7 API",
+      "_type": "workspace"
+    },
+    {
+      "_id": "env_1",
+      "parentId": "wrk_1",
+      "name": "Base Environment",
+      "_type": "environment",
+      "data": {
+        "base_url": "http://localhost:3000"
+      }
+    },
+    {
+      "_id": "fld_commands",
+      "parentId": "wrk_1",
+      "name": "Commands",
+      "_type": "request_group"
+    },
+    {
+      "_id": "fld_queries",
+      "parentId": "wrk_1",
+      "name": "Queries",
+      "_type": "request_group"
+    },
+    {
+      "_id": "req_status",
+      "parentId": "wrk_1",
+      "name": "GET /api/status",
+      "_type": "request",
+      "method": "GET",
+      "url": "{{ base_url }}/api/status"
+    },
+    {
+      "_id": "req_activate_user",
+      "parentId": "fld_commands",
+      "name": "POST /commands/activate-user",
+      "_type": "request",
+      "method": "POST",
+      "url": "{{ base_url }}/commands/activate-user",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"userKey\": \"user1\",\n  \"username\": \"testuser\"\n}"
+      }
+    },
+    {
+      "_id": "req_post",
+      "parentId": "fld_commands",
+      "name": "POST /commands/post",
+      "_type": "request",
+      "method": "POST",
+      "url": "{{ base_url }}/commands/post",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"userKey\": \"user1\",\n  \"postKey\": \"post1\",\n  \"content\": \"Hello world!\"\n}"
+      }
+    },
+    {
+      "_id": "req_like",
+      "parentId": "fld_commands",
+      "name": "POST /commands/like",
+      "_type": "request",
+      "method": "POST",
+      "url": "{{ base_url }}/commands/like",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"userKey\": \"user1\",\n  \"postKey\": \"post1\"\n}"
+      }
+    },
+    {
+      "_id": "req_view",
+      "parentId": "fld_commands",
+      "name": "POST /commands/view",
+      "_type": "request",
+      "method": "POST",
+      "url": "{{ base_url }}/commands/view",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"userKey\": \"user1\",\n  \"postKey\": \"post1\"\n}"
+      }
+    },
+    {
+      "_id": "req_comment",
+      "parentId": "fld_commands",
+      "name": "POST /commands/comment",
+      "_type": "request",
+      "method": "POST",
+      "url": "{{ base_url }}/commands/comment",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"userKey\": \"user1\",\n  \"postKey\": \"post1\",\n  \"content\": \"Nice post!\"\n}"
+      }
+    },
+    {
+      "_id": "req_follow",
+      "parentId": "fld_commands",
+      "name": "POST /commands/follow",
+      "_type": "request",
+      "method": "POST",
+      "url": "{{ base_url }}/commands/follow",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"userKey\": \"user1\",\n  \"followedKey\": \"user2\"\n}"
+      }
+    },
+    {
+      "_id": "req_unfollow",
+      "parentId": "fld_commands",
+      "name": "POST /commands/unfollow",
+      "_type": "request",
+      "method": "POST",
+      "url": "{{ base_url }}/commands/unfollow",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"userKey\": \"user1\",\n  \"followedKey\": \"user2\"\n}"
+      }
+    },
+    {
+      "_id": "req_personal_feed",
+      "parentId": "fld_queries",
+      "name": "POST /queries/personal-feed",
+      "_type": "request",
+      "method": "POST",
+      "url": "{{ base_url }}/queries/personal-feed",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"userKey\": \"user1\",\n  \"startSortKey\": null,\n  \"limit\": 10\n}"
+      }
+    },
+    {
+      "_id": "req_global_feed",
+      "parentId": "fld_queries",
+      "name": "POST /queries/global-feed",
+      "_type": "request",
+      "method": "POST",
+      "url": "{{ base_url }}/queries/global-feed",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"startSortKey\": null,\n  \"limit\": 10\n}"
+      }
+    },
+    {
+      "_id": "req_comments",
+      "parentId": "fld_queries",
+      "name": "POST /queries/comments",
+      "_type": "request",
+      "method": "POST",
+      "url": "{{ base_url }}/queries/comments",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"postKey\": \"post1\",\n  \"startSortKey\": null,\n  \"limit\": 10\n}"
+      }
+    },
+    {
+      "_id": "req_active_users",
+      "parentId": "fld_queries",
+      "name": "POST /queries/active-users",
+      "_type": "request",
+      "method": "POST",
+      "url": "{{ base_url }}/queries/active-users",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"limit\": 10,\n  \"postKey\": \"post1\",\n  \"textSearch\": null\n}"
+      }
+    },
+    {
+      "_id": "req_user_timeline",
+      "parentId": "fld_queries",
+      "name": "POST /queries/user-timeline",
+      "_type": "request",
+      "method": "POST",
+      "url": "{{ base_url }}/queries/user-timeline",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"userKey\": \"user1\",\n  \"startSortKey\": null,\n  \"limit\": 10\n}"
+      }
+    }
+  ]
+}

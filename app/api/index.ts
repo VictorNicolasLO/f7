@@ -12,9 +12,9 @@ import { FOLLOWERS_STORE } from "../views/followers"
 import { POST_STORE } from "../views/post"
 import { USER_TIMELINE } from "../views/user-timeline"
 
-export const startServer = (store: QueryStore, kActorBus: KActorBus)=>
+export const startServer = (store: QueryStore, kActorBus: KActorBus, port: number)=>
     Bun.serve({
-    port: 3000,
+    port: port,
     routes: {
         "/api/status": new Response("OK"),
         '/commands/activate-user': async req => {

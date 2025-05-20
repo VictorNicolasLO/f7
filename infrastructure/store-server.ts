@@ -3,6 +3,8 @@ import { start } from "node:repl";
 import Btree from 'sorted-btree'
 import { startHttp2Server } from "./http2-server";
 import type { QueryPrepResponse } from './view-handler';
+import { createHttp2Client } from "./http2-client";
+import { getPartition } from "./utils";
 
 
 // type QueryExecResult = QueryParams | QueryParams[]
@@ -126,4 +128,12 @@ export const startStoreServer = async (port: number) => {
     })
 }
 
+export const createQueryStore = (storeShards: string[],): QueryStore => {
+    const storeClients = storeShards.map((shard) => createHttp2Client(shard))
+    return {
+        query: async (params: QueryParams) => {
+            return (await storeClients[getPartition(params.store, storeShards.length)].request('/store/query', params)) as QueryResult[]
+        }
+    }
+}
 

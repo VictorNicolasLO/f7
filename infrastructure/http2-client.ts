@@ -1,17 +1,8 @@
 import { connect } from "node:http2";
+import { createDeferredPromise } from "./utils";
 
-export function createDeferredPromise() {
-    let resolve:any, reject: any;
-    
-    const promise = new Promise((res, rej) => {
-        resolve = res;
-        reject = rej;
-    });
 
-    return { promise, resolve: resolve as (...args:any)=> void, reject: reject as (...args:any)=> void};
-}
-
-export const http2Client = (url: string) => {
+export const createHttp2Client = (url: string) => {
     const client = connect(url)
     client.on("error", (err) => {
         console.error("Client error:", err);
@@ -38,7 +29,7 @@ export const http2Client = (url: string) => {
             resolve(JSON.parse(data));
         });
         req.end();
-        await promise
+        return await promise
     }
     return {
         request,
