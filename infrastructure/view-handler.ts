@@ -1,6 +1,7 @@
 import { Kafka } from 'kafkajs';
 import { http2Client } from './http2-client';
 import type { KActor } from './kactor';
+import { createHash } from 'node:crypto'
 
 export type QueryPrepResponse = {
     store: string,
@@ -18,6 +19,17 @@ export const view = <T extends { state: unknown }>(clz: new () => T, viewExec: (
         viewExec,
     }
 }
+
+function getPartition(stringId: string, N: number, salt: string = '') {
+    // Create an MD5 hash of the stringId
+    const hash = createHash('md5').update(stringId + salt).digest('hex');
+    // Convert the hex hash to an integer
+    const intHash = BigInt('0x' + hash);
+    // Get the partition number
+    const partition = Number(intHash % BigInt(N));
+    return partition;
+}
+
 const SNAPTHOT_PARTITIONS = 10
 export const startViewHandler = async (
     kafkaBrokers: string[],
@@ -30,9 +42,10 @@ export const startViewHandler = async (
         brokers: kafkaBrokers,
     });
 
-    const viewsByActor = kActors.map((clz)=> views.filter((view) => view.clz === clz))
+    const viewsByActor = kActors.map((clz) => views.filter((view) => view.clz === clz))
 
     const shardClients = await Promise.all(storeShards.map((shard) => http2Client(shard)));
+
 
 
     const consumer = kafka.consumer({ groupId: 'view-handler', readUncommitted: false });
@@ -47,34 +60,36 @@ export const startViewHandler = async (
             autoCommit: true,
             eachBatch: async ({ batch }) => {
                 const messages = batch.messages;
-                messages.map(async ({key, value})=> {
+                await Promise.all(messages.map(async ({ key, value }) => {
                     if (!key || !value) {
                         return
                     }
                     const keyStr = key.toString()
-                    if( keyStr.startsWith('snapshot-offset')) {
+                    if (keyStr.startsWith('snapshot-offset')) {
                         return
                     }
                     const valueStr = value.toString()
                     const valueObj = JSON.parse(valueStr)
                     const classIndex = valueObj.classIndex
                     const actorState = valueObj.actorState
-                    const exects = viewsByActor[classIndex].map(({viewExec})=> viewExec(keyStr, actorState))
-                    
-                } )
+                    const mutationQueries = viewsByActor[classIndex].map(({ viewExec }) => viewExec(keyStr, actorState))
+                    await Promise.all(
+                        mutationQueries
+                            .map(async (mutationQuery) =>
+                                shardClients[getPartition(mutationQuery.key, storeShards.length)]
+                                    .request('/store/mutate', mutationQuery)
+                            ))
+                }))
 
             },
         });
         const topicPartitions = new Array(SNAPTHOT_PARTITIONS)
             .fill(0)
-            .map((_, index) => ({ topic: 'kactors-snapshots', partition: 0, offset: index.toString() }));
+            .map((_, index) => ({ topic: 'kactors-snapshots', partition: index, offset: '0' }));
 
         topicPartitions.forEach((partition) => {
             consumer.seek(partition);
         });
-
-
-
     };
 
     run().catch(console.error);
