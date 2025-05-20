@@ -15,14 +15,15 @@ export const startHttp2Server = async (port: number, on: (path:string, data:any)
             body += chunk;
         });
 
-        stream.on('end', () => {
+        stream.on('end', async () => {
             console.log('Request method:', method);
             console.log('Request path:', path);
             console.log('Request body:', body);
 
-            const response = on(path || '', JSON.parse(body));
-
+            const response = await on(path || '', JSON.parse(body));
+            
             stream.respond({ ':status': 200,  "content-type": 'application/json', });
+            
             stream.end(JSON.stringify(response));
         });
 

@@ -43,13 +43,17 @@ export const startStoreServer = async (port: number) => {
                     storeData[store][key] = {};
                 }
                 if (!sortKey) {
-                    storeData[store][key].item = data;
+                    storeData[store][key].item = {...storeData[store][key].item, ...data};
                 }
                 else {
                     if (!storeData[store][key].btree) {
                         storeData[store][key].btree = new Btree();
                     }
-                    storeData[store][key].btree.set(sortKey, data);
+                    const val = storeData[store][key].btree.get(sortKey, undefined)
+                    storeData[store][key].btree.set(sortKey, {
+                        ...val,
+                        ...data
+                    });
                 }
                 return { status: 'ok' }
             }
@@ -98,7 +102,7 @@ export const startStoreServer = async (port: number) => {
                   
 
                     if (startSortKey) {
-                        const items = btree.getRange(startSortKey, btree.maxKey(), true, limit);
+                        const items = btree.getRange(startSortKey, btree.maxKey(), false, limit);
                         return items.map(([sk, v]) => {
                             return {
                                 data: v,
@@ -107,7 +111,7 @@ export const startStoreServer = async (port: number) => {
                             } as QueryResult
                         })
                     } else {
-                        const items = btree.getRange(btree.minKey(), btree.maxKey(), true, limit);
+                        const items = btree.getRange(btree.minKey(), btree.maxKey(), false, limit);
                         return items.map(([sk, v]) => {
                             return {
                                 data: v,

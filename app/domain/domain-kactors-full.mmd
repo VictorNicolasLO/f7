@@ -1,0 +1,94 @@
+```mermaid
+classDiagram
+    class Comment {
+        +CommentState state
+        +comment(content, postKey, userKey)
+        CommentState: content: string
+        CommentState: postKey: string
+        CommentState: userKey: string
+    }
+    Comment ..> PostMetrics : updates
+
+    class FeedItem {
+        +FeedItemState state
+        +create()
+        FeedItemState: Boolean
+    }
+
+    class Follower {
+        +FollowerState state
+        +follow()
+        +unfollow()
+        +setChunkKey(chunkKey)
+        FollowerState: active: boolean
+        FollowerState: chunkKey?: string
+    }
+    Follower ..> UserFollowers : notifies
+
+    class FollowersChunk {
+        +FollowersChunkState state
+        +addFollower(followerKey)
+        +removeFollower(followerKey)
+        +fanout(postKey, maxChunk)
+        FollowersChunkState: followers: string[]
+    }
+    FollowersChunk ..> Follower : manages
+    FollowersChunk ..> FeedItem : creates
+    FollowersChunk ..> FollowersChunk : recursive fanout
+
+    class Like {
+        +LikeState state
+        +like()
+        LikeState: active: boolean
+    }
+    Like ..> PostMetrics : updates
+
+    class Post {
+        +PostState state
+        +post(userKey, content)
+        PostState: userKey: string
+        PostState: content: string
+    }
+    Post ..> UserFollowers : notifies
+    Post ..> FeedItem : creates
+
+    class PostMetrics {
+        +PostMetricsState state
+        +incrementComments()
+        +incrementLikes()
+        +incrementShares()
+        +incrementViews()
+        PostMetricsState: likeCount: number
+        PostMetricsState: commentCount: number
+        PostMetricsState: shareCount: number
+        PostMetricsState: viewsCount: number
+    }
+
+    class UserActive {
+        +UserActiveState state
+        +setActive(date, username)
+        UserActiveState: lastLogin: string
+        UserActiveState: username: string
+    }
+
+    class UserFollowers {
+        +UserFollowersState state
+        +addFollower(followerKey)
+        +removeFollower(followerKey, chunkKey)
+        +fanout(postKey)
+        UserFollowersState: followersCount: number
+        UserFollowersState: followingCount: number
+        UserFollowersState: maxChunk: number
+        UserFollowersState: incompleteChunks: Record<string, number>
+    }
+    UserFollowers ..> FollowersChunk : manages
+
+    class View {
+        +ViewState state
+        +view()
+        ViewState: Boolean
+    }
+    View ..> PostMetrics : increments views
+
+    %% Relationships are based on method calls and state references in the code
+```

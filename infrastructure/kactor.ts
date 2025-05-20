@@ -116,3 +116,45 @@ export const startKActorSystem = async (kafkaBrokers: string[], kActors: (new ()
     })
 
 } 
+
+export const createActorBus = (kafkaBrokers: string[], kActors: (new () => KActor)[]) => {
+    const classesMap = kActors.reduce((acc, clz, index) => {
+        acc[clz.name] = { index, methodsMap: getClassMethodMap(clz) }
+        return acc
+    }, {} as Record<string, { index: number, methodsMap: ClassMethodMap }>)
+
+    const kafka = new Kafka({
+        clientId: 'kactor',
+        brokers: kafkaBrokers
+    })
+    const producer = kafka.producer()
+    return {
+        send: async (cb: (ref: <T>(clz: new () => T, key: string) => Ref<T>) => any) => {
+            const message = cb(new Proxy({}, {
+                get(target, prop, receiver) {
+                    if (prop !== 'equals' && prop !== 'classType' && prop !== 'classType') {
+                        return (...args: any) => {
+                            return {
+                                classIndex: classesMap[prop as string].index,
+                                methodIndex: classesMap[prop as string].methodsMap.methods[prop as string],
+                                args
+                            }
+                        };
+                    } else {
+                        return (target as any)[prop];
+                    }
+
+                }
+            }) as unknown)
+            await producer.send({
+                topic: 'kactors',
+                messages: [
+                    {
+                        key: 'kactors',
+                        value: JSON.stringify(message)
+                    }
+                ]
+            })
+        }
+    } as KActorBus
+}
