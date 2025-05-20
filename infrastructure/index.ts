@@ -13,7 +13,7 @@ type QueryResult<T> = {
 
 
 
-type QueryExecResult = QueryParams | QueryParams[]
+
 // export const query = <T>(queryExec:(queryArgs: T)=> QueryExecResult)=> {
 //     const steps: any[] = [queryExec]
 //     const done = ()=> ({
@@ -33,6 +33,4 @@ type QueryExecResult = QueryParams | QueryParams[]
 //     }
 // } 
 
-export type QueryStore = {
-    query:  (params:QueryParams)=> Promise<{ key:string, sortKey: string, data: any }[]>
-}
+
