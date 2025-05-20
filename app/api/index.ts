@@ -28,7 +28,7 @@ export const startServer = (store: QueryStore, kActorBus: KActorBus)=>
             await kActorBus.send((ref)=> ref(Post, postKey).post(userKey, content))
             return new Response("OK")
         },
-        '/commands/like': async req => {
+        '/commands/like': async req => { 
             const { userKey, postKey } = await req.json()         
             await kActorBus.send((ref)=> ref(Like, `${userKey}|${postKey}`).like())
             return new Response("OK")
@@ -55,18 +55,18 @@ export const startServer = (store: QueryStore, kActorBus: KActorBus)=>
         },
 
         '/queries/personal-feed': async req => {
-            const { userKey, page, limit } = await req.json()
+            const { userKey, startSortKey, limit } = await req.json()
             const postKeys = await store.query({
                 store: FEED_STORE,
                 type: 'many',
-                limit,
-                page,
+                limit, 
+                startSortKey,
                 key: userKey,
             })
             const posts = await Promise.all(postKeys.map(({ sortKey }) => store.query({
                 store: POST_STORE,
                 type: 'one',
-                key: sortKey,
+                key: sortKey!,
             })))
             return Response.json({
                 status: 'ok',
@@ -74,18 +74,18 @@ export const startServer = (store: QueryStore, kActorBus: KActorBus)=>
             })
         },
         '/queries/global-feed': async req => {
-            const { page, limit } = await req.json()
+            const { startSortKey, limit } = await req.json()
             const postKeys = await store.query({
                 store: FEED_STORE,
                 type: 'many',
                 limit,
-                page,
+                startSortKey,
                 key: 'global',
             })
             const posts = await Promise.all(postKeys.map(({ sortKey }) => store.query({
                 store: POST_STORE,
                 type: 'one',
-                key: sortKey,
+                key: sortKey!,
             })))
             return Response.json({
                 status: 'ok',
@@ -93,12 +93,12 @@ export const startServer = (store: QueryStore, kActorBus: KActorBus)=>
             })
         },
         '/queries/comments': async req => {
-            const { page, limit, postKey } = await req.json()
+            const { startSortKey, limit, postKey } = await req.json()
             const comments = await store.query({
                 store: COMMENTS_STORE,
                 type: 'many',
                 limit,
-                page,
+                startSortKey,
                 key: postKey,
             })
             return Response.json({
@@ -107,14 +107,13 @@ export const startServer = (store: QueryStore, kActorBus: KActorBus)=>
             })
         },
         '/queries/active-users': async req => {
-            const { page, limit, postKey, textSearch } = await req.json()
+            const { limit, postKey, textSearch } = await req.json()
             const users = await store.query({
                 store: ACTIVE_USERS_STORE,
                 type: 'many',
                 limit,
-                page,
                 key: postKey,
-                sortKey: textSearch
+                startSortKey: textSearch
             })
             const activeUsers = await Promise.all(users.map(async ({ data, sortKey }) => {
                 const followData = await store.query({
@@ -135,18 +134,18 @@ export const startServer = (store: QueryStore, kActorBus: KActorBus)=>
             })
         },
         '/queries/user-timeline': async req => {
-            const { page, limit, userKey } = await req.json() 
+            const { startSortKey, limit, userKey } = await req.json() 
             const postKeys = await store.query({
                 store: USER_TIMELINE,
                 type: 'many',
                 limit,
-                page,
+                startSortKey,
                 key: userKey,
             })
             const posts = await Promise.all(postKeys.map(({ sortKey }) => store.query({
                 store: POST_STORE,
                 type: 'one',
-                key: sortKey,
+                key: sortKey!,
             })))
             return Response.json({
                 status: 'ok',
