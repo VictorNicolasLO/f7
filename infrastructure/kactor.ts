@@ -40,7 +40,7 @@ type KActorMessage = {
 }
 
 
-const startKActorSystem = async (kafkaBrokers: string[], kActors: (new () => KActor)[]) => {
+export const startKActorSystem = async (kafkaBrokers: string[], kActors: (new () => KActor)[]) => {
 
     const classesMap = kActors.reduce((acc, clz, index) => {
         acc[clz.name] = { index, methodsMap: getClassMethodMap(clz) }
@@ -72,13 +72,15 @@ const startKActorSystem = async (kafkaBrokers: string[], kActors: (new () => KAc
     const store = createInMemoryStore()
     const kstate = createKState(store, kafka)
 
-    kstate.fromTopic('kactors').reduce((message: KActorMessage, key, state) => {
+    kstate.fromTopic<{actorState: any, classIndex: number }>('kactors').reduce((message: KActorMessage, key, state) => {
         const reactions: { message: KActorMessage, topic:string, key:string }[] = []
         const classIndex = message.classIndex
         const methodIndex = message.methodIndex
         const methodName = classesMap[message.classIndex].methodsMap.arr[methodIndex]
+        const actorState = state ? state.actorState : null
         kActors[classIndex].prototype[methodName].apply({
-            state, ref: (clz: new () => any, key: string) => {
+            state: {}, 
+            ref: (clz: new () => any, key: string) => {
                 new Proxy({}, {
                     get(target, prop, receiver) {
                         if (prop !== 'equals' && prop !== 'classType' && prop !== 'classType') {
@@ -106,7 +108,10 @@ const startKActorSystem = async (kafkaBrokers: string[], kActors: (new () => KAc
 
         return {
             reactions,
-            state
+            state : {
+                actorState,
+                classIndex
+            }
         }
     })
 

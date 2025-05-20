@@ -25,7 +25,7 @@ export { View } from "./view";
 // Import all domain kactors
 
 // Export as array
-export const domainKactors = [
+export const domainKactors = [ // IMPORTANT keep the order of the exported actors, new actors should be added at the end
     Comment,
     FeedItem,
     Follower,

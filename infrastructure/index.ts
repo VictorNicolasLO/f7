@@ -1,11 +1,6 @@
 export * from './kactor'
+export * from './view-handler'
 
-export type QueryPrepResponse = {
-    store: string,
-    key: string,
-    sortKey?: string,
-    data: any,
-}
 
 type QueryResult<T> = {
     clz: new () => T,
@@ -14,9 +9,7 @@ type QueryResult<T> = {
 
 
 
-export const view = <T extends {state: unknown}>(clz: new ()=>T, viewExec: (key: string, state: T['state'] )=> QueryPrepResponse) => {
 
-}
 
 
 export type QueryParams = {

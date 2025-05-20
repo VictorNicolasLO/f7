@@ -5,7 +5,7 @@ import { Follower } from "../domain/follower/follower";
 
 export const FOLLOWED_STORE = 'followed_store';
 
-const followerView = view(Follower, (key, state) => {
+export const followedView = view(Follower, (key, state) => {
     // key format: followerId|followedId
     const [followerKey, followedKey] = key.split('|');
     return {
@@ -18,4 +18,3 @@ const followerView = view(Follower, (key, state) => {
     }
 });
 
-export const followersViews = [followerView];

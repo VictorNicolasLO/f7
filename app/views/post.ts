@@ -4,7 +4,7 @@ import { PostMetrics } from "../domain/post-metrics/post-metrics";
 
 export const POST_STORE = 'post_store';
 
-const post = view(Post, (key, state)=>{
+export const post = view(Post, (key, state)=>{
     return {
         store: POST_STORE,
         key: key,
@@ -15,7 +15,7 @@ const post = view(Post, (key, state)=>{
     }
 })
 
-const metrics = view(PostMetrics, (key, state)=>{
+export const metrics = view(PostMetrics, (key, state)=>{
     return {
         store: POST_STORE,
         key: key,
@@ -28,4 +28,3 @@ const metrics = view(PostMetrics, (key, state)=>{
     }
 })
 
-export const postViews = [post, metrics]

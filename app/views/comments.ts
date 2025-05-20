@@ -3,7 +3,7 @@ import { Comment } from "../domain/comment/comment";
 
 export const COMMENTS_STORE = 'comments_store';
 
-const commentView = view(Comment, (key, state) => {
+export const commentView = view(Comment, (key, state) => {
    
     return {
         store: COMMENTS_STORE,
@@ -17,4 +17,3 @@ const commentView = view(Comment, (key, state) => {
     }
 });
 
-export const commentViews = [commentView];
