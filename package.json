@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "k-state": "^1.0.1",
-    "sorted-btree": "^1.8.1"
+    "sorted-btree": "^1.8.1",
+    "ulid": "^3.0.0"
   }
 }

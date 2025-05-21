@@ -11,9 +11,9 @@ export type QueryPrepResponse = {
 }
 type ViewRes = {
     clz: new () => any,
-    viewExec: (key: string, state: any) => QueryPrepResponse,
+    viewExec: (key: string, state: any) => QueryPrepResponse | undefined,
 }
-export const view = <T extends { state: unknown }>(clz: new () => T, viewExec: (key: string, state: T['state']) => QueryPrepResponse) => {
+export const view = <T extends { state: unknown }>(clz: new () => T, viewExec: (key: string, state: T['state']) => QueryPrepResponse | undefined) => {
     return {
         clz,
         viewExec,
@@ -63,15 +63,25 @@ export const startViewHandler = async (
                     }
                     const valueStr = value.toString()
                     const valueObj = JSON.parse(valueStr)
-                    const classIndex = valueObj.classIndex
-                    const actorState = valueObj.actorState
-                    const mutationQueries = viewsByActor[classIndex].map(({ viewExec }) => viewExec(keyStr, actorState))
-                    await Promise.all(
-                        mutationQueries
-                            .map(async (mutationQuery) =>
-                                shardClients[getPartition(mutationQuery.key, storeShards.length)]
-                                    .request('/store/mutate', mutationQuery)
-                            ))
+                    const classIndex = valueObj.payload.classIndex
+                    const actorState = valueObj.payload.actorState
+                    const actorKey = keyStr.split('/')[1]
+                    try {
+                        const mutationQueries = viewsByActor[classIndex]
+                            .map(({ viewExec }) => viewExec(actorKey, actorState))
+                            .filter((viewRes) => viewRes !== undefined)
+                        await Promise.all(
+                            mutationQueries
+                                .map(async (mutationQuery) =>
+                                    shardClients[getPartition(mutationQuery.key, storeShards.length)]
+                                        .request('/store/mutate', mutationQuery)
+                                ))
+                    } catch (e) {
+                        console.error('Error in view handler', e)
+                        throw e
+                    }
+
+
                 }))
 
             },

@@ -97,6 +97,9 @@ export const startStoreServer = async (port: number) => {
                     if (!storeData[store]) {
                         return [] as QueryResult[]
                     }
+                    if (!storeData[store][key]) {
+                        return [] as QueryResult[]
+                    }
                     const btree = storeData[store][key].btree;
                     if (!btree) {
                         return [] as QueryResult[]
@@ -104,7 +107,7 @@ export const startStoreServer = async (port: number) => {
                   
 
                     if (startSortKey) {
-                        const items = btree.getRange(startSortKey, btree.maxKey(), false, limit);
+                        const items = btree.getRange(startSortKey, btree.maxKey(), true, limit);
                         return items.map(([sk, v]) => {
                             return {
                                 data: v,
@@ -113,7 +116,7 @@ export const startStoreServer = async (port: number) => {
                             } as QueryResult
                         })
                     } else {
-                        const items = btree.getRange(btree.minKey(), btree.maxKey(), false, limit);
+                        const items = btree.getRange(btree.minKey(), btree.maxKey(), true, limit);
                         return items.map(([sk, v]) => {
                             return {
                                 data: v,

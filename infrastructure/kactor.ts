@@ -50,7 +50,8 @@ export const startKActorSystem = async (kafkaBrokers: string[], kActors: (new ()
 
     const kafka = new Kafka({
         clientId: 'kactor',
-        brokers: kafkaBrokers
+        brokers: kafkaBrokers,
+        logLevel: 2
     })
     const admin = kafka.admin()
     await admin.connect()
@@ -76,18 +77,20 @@ export const startKActorSystem = async (kafkaBrokers: string[], kActors: (new ()
         const reactions: { message: KActorMessage, topic:string, key:string }[] = []
         const classIndex = message.classIndex
         const methodIndex = message.methodIndex
-        const methodName = classesMap[message.classIndex].methodsMap.arr[methodIndex]
+        const methodName =  classesMap[kActors[classIndex].name].methodsMap.arr[methodIndex]
         const actorState = state ? state.actorState : null
-        kActors[classIndex].prototype[methodName].apply({
-            state: {}, 
+        const actorKey = key.split('/')[1]
+        const instance = {
+            state: actorState, 
+            key: actorKey,
             ref: (clz: new () => any, key: string) => {
-                new Proxy({}, {
+               return new Proxy({}, {
                     get(target, prop, receiver) {
                         if (prop !== 'equals' && prop !== 'classType' && prop !== 'classType') {
                             return (...args: any) => {
                                 reactions.push({
                                     topic: 'kactors',
-                                    key: key,
+                                    key: `${classesMap[clz.name].index}/${key}`,
                                     message: {
                                         classIndex: classesMap[clz.name].index,
                                         methodIndex: classesMap[clz.name].methodsMap.methods[prop as string],
@@ -104,12 +107,13 @@ export const startKActorSystem = async (kafkaBrokers: string[], kActors: (new ()
                     }
                 }) as unknown
             }
-        }, message.args)
-
+        }
+        kActors[classIndex].prototype[methodName].apply(instance, message.args)
+     
         return {
             reactions,
             state : {
-                actorState,
+                actorState : instance.state,
                 classIndex
             }
         }
@@ -117,17 +121,18 @@ export const startKActorSystem = async (kafkaBrokers: string[], kActors: (new ()
 
 } 
 
-export const createKActorBus = (kafkaBrokers: string[], kActors: (new () => KActor)[]): KActorBus => {
+export const createKActorBus = async (kafkaBrokers: string[], kActors: (new () => KActor)[]): Promise<KActorBus>  => {
     const classesMap = kActors.reduce((acc, clz, index) => {
         acc[clz.name] = { index, methodsMap: getClassMethodMap(clz) }
         return acc
     }, {} as Record<string, { index: number, methodsMap: ClassMethodMap }>)
-    
+
     const kafka = new Kafka({
         clientId: 'kactor',
         brokers: kafkaBrokers
     })
     const producer = kafka.producer()
+    await producer.connect()
     return {
         send: async (cb: (ref: <T>(clz: new () => T, key: string) => Ref<T>) => any) => {
             const reactions: {key:string, value:string}[] = []
@@ -137,7 +142,7 @@ export const createKActorBus = (kafkaBrokers: string[], kActors: (new () => KAct
                         if (prop !== 'equals' && prop !== 'classType' && prop !== 'classType') {
                             return (...args: any) => {
                                 reactions.push({
-                                    key: key,
+                                    key: `${classesMap[clz.name].index}/${key}`,
                                     value: JSON.stringify({
                                         classIndex: classesMap[clz.name].index,
                                         methodIndex: classesMap[clz.name].methodsMap.methods[prop as string],

@@ -21,7 +21,9 @@ export class Follower extends KActor {
         const keys = this.key.split('|')
         const followerKey = keys[FOLLOWER_PART_KEY]
         const followedKey = keys[FOLLOWED_PART_KEY]
-        if (!this.state) {
+        if(!this.state)
+            this.state = {active: true}
+        if (!this.state.active) {
             this.state = {
                 active: true
             }
@@ -33,6 +35,8 @@ export class Follower extends KActor {
     }
 
     setChunkKey(chunkKey: string) {
+        if(!this.state)
+            return
         const keys = this.key.split('|')
         const followerKey = keys[FOLLOWER_PART_KEY]
         const followedKey = keys[FOLLOWED_PART_KEY]
@@ -43,7 +47,7 @@ export class Follower extends KActor {
     }
     
     unfollow() {
-        if(!this.state || !this.state.active)
+        if(this.state && !this.state.active)
             return
         const keys = this.key.split('|')
         const followerKey = keys[FOLLOWER_PART_KEY]

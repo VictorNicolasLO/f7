@@ -1,3 +1,4 @@
+import { ulid } from "ulid"
 import type { KActorBus, QueryStore } from "../../infrastructure"
 import { Comment } from "../domain/comment/comment"
 import { Follower } from "../domain/follower/follower"
@@ -40,7 +41,7 @@ export const startServer = (store: QueryStore, kActorBus: KActorBus, port: numbe
         },
         '/commands/comment': async req => {
             const { userKey, postKey, content } = await req.json()         
-            await kActorBus.send((ref)=> ref(Comment, postKey).comment(content, postKey, userKey))
+            await kActorBus.send((ref)=> ref(Comment, ulid()).comment(content, postKey, userKey))
             return new Response("OK")
         },
         '/commands/follow': async req => { 

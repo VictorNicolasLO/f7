@@ -57,7 +57,8 @@ export class UserFollowers extends KActor {
         const userKey = this.key
         const chunkNumber = 0
         const chunkKey = `${userKey}|${chunkNumber}`
-        this.ref(FollowersChunk, chunkKey).fanout(postKey, this.state.maxChunk)
+        if(this.state)
+            this.ref(FollowersChunk, chunkKey).fanout(postKey, this.state.maxChunk)
     }
 
 }

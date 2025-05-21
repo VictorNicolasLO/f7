@@ -14,6 +14,10 @@ export class Post extends KActor{
     post(userKey: string, content: string) {
         if(this.state)
             return
+        this.state = {
+            userKey,
+            content
+        }
         this.ref(UserFollowers, userKey).fanout(this.key)
         this.ref(FeedItem, `global|${this.key}`).create()
     }

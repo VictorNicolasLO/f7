@@ -5,6 +5,8 @@ import { PostMetrics } from "../domain/post-metrics/post-metrics";
 export const POST_STORE = 'post_store';
 
 export const post = view(Post, (key, state)=>{
+    if(!state)
+        return
     return {
         store: POST_STORE,
         key: key,
