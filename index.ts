@@ -10,3 +10,8 @@ await admin.connect();
 await admin.deleteTopics({
     topics: ['kactors-snapshots'],
 })
+
+// TODO: Hop validation based on correlationId to prevent recursion
+// TODO: OverrideStore to save not transactional data
+// TODO: Add back supression for slow actors -> use store to fetch the data
+// TODO: Add ttl and queue duration persistence
