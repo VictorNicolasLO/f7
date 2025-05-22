@@ -8,7 +8,6 @@ const POST_PART_KEY = 1
 
 export const globalFeedView = view(FeedItem, (key) => {
     const postKey = key.split('|')[POST_PART_KEY]
-    console.log(key)
     return {
         store: FEED_STORE,
         key: 'global',

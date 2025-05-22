@@ -16,13 +16,13 @@ export type KActorBus = {
 
 }
 
-function getClassMethods(cls: any): string[] {
+export function getClassMethods(cls: any): string[] {
     return Object.getOwnPropertyNames(cls.prototype)
         .filter(name => typeof cls.prototype[name] === 'function' && name !== 'constructor');
 }
 
-type ClassMethodMap = { arr: string[], methods: Record<string, number> }
-const getClassMethodMap = (clz: new () => KActor): ClassMethodMap => {
+export type ClassMethodMap = { arr: string[], methods: Record<string, number> }
+export const getClassMethodMap = (clz: new () => KActor): ClassMethodMap => {
     const classMethods = getClassMethods(clz)
     return {
         arr: classMethods,
@@ -121,49 +121,3 @@ export const startKActorSystem = async (kafkaBrokers: string[], kActors: (new ()
 
 } 
 
-export const createKActorBus = async (kafkaBrokers: string[], kActors: (new () => KActor)[]): Promise<KActorBus>  => {
-    const classesMap = kActors.reduce((acc, clz, index) => {
-        acc[clz.name] = { index, methodsMap: getClassMethodMap(clz) }
-        return acc
-    }, {} as Record<string, { index: number, methodsMap: ClassMethodMap }>)
-
-    const kafka = new Kafka({
-        clientId: 'kactor',
-        brokers: kafkaBrokers
-    })
-    const producer = kafka.producer()
-    await producer.connect()
-    return {
-        send: async (cb: (ref: <T>(clz: new () => T, key: string) => Ref<T>) => any) => {
-            const reactions: {key:string, value:string}[] = []
-            const ref = <T>(clz: new () => T, key: string) => {
-                return new Proxy({}, {
-                    get(target, prop, receiver) {
-                        if (prop !== 'equals' && prop !== 'classType' && prop !== 'classType') {
-                            return (...args: any) => {
-                                reactions.push({
-                                    key: `${classesMap[clz.name].index}/${key}`,
-                                    value: JSON.stringify({
-                                        classIndex: classesMap[clz.name].index,
-                                        methodIndex: classesMap[clz.name].methodsMap.methods[prop as string],
-                                        args: args
-                                    }) ,
-
-                                })
-                                return undefined;
-                            };
-                        } else {
-                            return (target as any)[prop];
-                        }
-
-                    }
-                }) as unknown as T
-            }
-            cb(ref)
-            await producer.send({
-                topic: 'kactors',
-                messages: reactions
-            })
-        }
-    } as KActorBus
-}

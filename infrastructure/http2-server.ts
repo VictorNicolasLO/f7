@@ -1,6 +1,6 @@
 import { createServer } from "node:http2";
 
-export const startHttp2Server = async (port: number, on: (path:string, data:any)=> Promise<any>) => {
+export const startHttp2Server = async (port: number, on: (path: string, data: any) => Promise<any>) => {
     const server = createServer();
 
     server.on("stream", (stream, headers) => {
@@ -16,15 +16,22 @@ export const startHttp2Server = async (port: number, on: (path:string, data:any)
         });
 
         stream.on('end', async () => {
-            console.log('Request method:', method);
-            console.log('Request path:', path);
-            console.log('Request body:', body);
+            // console.log('Request method:', method);
+            // console.log('Request path:', path);
+            // console.log('Request body:', body);
+            try {
+                const response = await on(path || '', JSON.parse(body));
 
-            const response = await on(path || '', JSON.parse(body));
-            
-            stream.respond({ ':status': 200,  "content-type": 'application/json', });
-            
-            stream.end(JSON.stringify(response));
+                stream.respond({ ':status': 200, "content-type": 'application/json', });
+
+                stream.end(JSON.stringify(response));
+            } catch (e) {
+                console.error("Error parsing JSON:", e);
+                stream.respond({ ':status': 400, "content-type": 'application/json', });
+                stream.end(JSON.stringify({ error: "Invalid JSON" }));
+                return;
+            }
+
         });
 
     })

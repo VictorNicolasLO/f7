@@ -8,7 +8,7 @@ const kafka = new Kafka({
 const admin = kafka.admin();
 await admin.connect();
 await admin.deleteTopics({
-    topics: ['kactors-snapshots'],
+    topics: ['kactors-snapshots', 'kactors'],
 })
 
 // TODO: Hop validation based on correlationId to prevent recursion

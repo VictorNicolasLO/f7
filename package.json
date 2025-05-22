@@ -9,7 +9,8 @@
     "typescript": "^5"
   },
   "dependencies": {
-    "k-state": "^1.0.1",
+    "k-state": "^1.0.4",
+    "kafkajs": "^2.2.4",
     "sorted-btree": "^1.8.1",
     "ulid": "^3.0.0"
   }
