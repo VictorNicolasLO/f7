@@ -49,7 +49,6 @@ export const createKActorBus = async (kafkaBrokers: string[], kActors: (new () =
                 deferredPromise = createDeferredPromise()
                 setTimeout(startQueue, 10)
             }
-            const reactions: {key:string, value:string}[] = []
             const ref = <T>(clz: new () => T, key: string) => {
                 return new Proxy({}, {
                     get(target, prop, receiver) {
@@ -74,13 +73,8 @@ export const createKActorBus = async (kafkaBrokers: string[], kActors: (new () =
                 }) as unknown as T
             }
             cb(ref)
-            //await produce(reactions)
             await deferredPromise.promise
-            // await producer.send({
-            //     topic: 'kactors',
-            //     messages: reactions,
-            //     compression: 1,
-            // })
+
         }
     } as KActorBus
 }
