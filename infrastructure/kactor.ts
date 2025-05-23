@@ -36,7 +36,8 @@ export const getClassMethodMap = (clz: new () => KActor): ClassMethodMap => {
 type KActorMessage = {
     classIndex: number,
     methodIndex: number,
-    args: any[]
+    args: any[],
+    correlationDate: number
 }
 
 
@@ -73,10 +74,11 @@ export const startKActorSystem = async (kafkaBrokers: string[], kActors: (new ()
     const store = createInMemoryStore()
     const kstate = createKState(store, kafka)
 
-    kstate.fromTopic<{actorState: any, classIndex: number }>('kactors').reduce((message: KActorMessage, key, state) => {
+    kstate.fromTopic<{actorState: any, classIndex: number, correlationDate:number }>('kactors').reduce((message: KActorMessage, key, state) => {
         const reactions: { message: KActorMessage, topic:string, key:string }[] = []
         const classIndex = message.classIndex
         const methodIndex = message.methodIndex
+        const correlationDate = message.correlationDate
         const methodName =  classesMap[kActors[classIndex].name].methodsMap.arr[methodIndex]
         const actorState = state ? state.actorState : null
         const actorKey = key.split('/')[1]
@@ -94,7 +96,8 @@ export const startKActorSystem = async (kafkaBrokers: string[], kActors: (new ()
                                     message: {
                                         classIndex: classesMap[clz.name].index,
                                         methodIndex: classesMap[clz.name].methodsMap.methods[prop as string],
-                                        args: args
+                                        args: args,
+                                        correlationDate
                                     },
 
                                 })
@@ -114,7 +117,8 @@ export const startKActorSystem = async (kafkaBrokers: string[], kActors: (new ()
             reactions,
             state : {
                 actorState : instance.state,
-                classIndex
+                classIndex,
+                correlationDate
             }
         }
     })

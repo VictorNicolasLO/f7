@@ -41,6 +41,7 @@ export const createKActorBus = async (kafkaBrokers: string[], kActors: (new () =
 
     return {
         send: async (cb: (ref: <T>(clz: new () => T, key: string) => Ref<T>) => any) => {
+            const correlationDate =  Date.now()
             if(ongoingDeferredPromise) {
                 await ongoingDeferredPromise.promise
             }
@@ -59,7 +60,8 @@ export const createKActorBus = async (kafkaBrokers: string[], kActors: (new () =
                                     value: JSON.stringify({
                                         classIndex: classesMap[clz.name].index,
                                         methodIndex: classesMap[clz.name].methodsMap.methods[prop as string],
-                                        args: args
+                                        args: args,
+                                        correlationDate
                                     }) ,
 
                                 })

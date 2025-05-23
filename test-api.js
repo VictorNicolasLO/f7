@@ -123,7 +123,7 @@ async function main() {
     // POST /commands/post
     let cont = 0
     console.time(`POST /commands/post`);
-    await Promise.all(new Array(1000_0).fill(0).map(async (_, i) => {
+    await Promise.all(new Array(10000).fill(0).map(async (_, i) => {
         // console.time(`POST /commands/post ${i}`);
         await post('/commands/post', { userKey: 'user' + i, postKey: 'post' + i, content: 'Hello world! how are you doing, great? wow bla bla bla' });
         // console.timeEnd(`POST /commands/post`);

@@ -53,6 +53,7 @@ export const startViewHandler = async (
             eachBatch: async ({ batch }) => {
                 console.log('batch', batch.messages.length)
                 const messages = batch.messages;
+                let maxCorrelationDate: number | undefined = undefined
                 await Promise.all(messages.map(async ({ key, value }) => {
                     if (!key || !value) {
                         return
@@ -65,8 +66,11 @@ export const startViewHandler = async (
                     const valueObj = JSON.parse(valueStr)
                     const classIndex = valueObj.payload.classIndex
                     const actorState = valueObj.payload.actorState
+                    const correlationDate:number = valueObj.payload.correlationDate
+                    maxCorrelationDate = maxCorrelationDate ? maxCorrelationDate > correlationDate ? maxCorrelationDate : correlationDate : correlationDate
                     const actorKey = keyStr.split('/')[1]
                     try {
+                        
                         const mutationQueries = viewsByActor[classIndex]
                             .map(({ viewExec }) => viewExec(actorKey, actorState))
                             .filter((viewRes) => viewRes !== undefined)
@@ -76,13 +80,15 @@ export const startViewHandler = async (
                                     shardClients[getPartition(mutationQuery.key, storeShards.length)]
                                         .request('/store/mutate', mutationQuery)
                                 ))
+                    
                     } catch (e) {
                         console.error('Error in view handler', e)
                         throw e
                     }
-
-
                 }))
+                console.log('maxCorrelationDate', maxCorrelationDate)
+                console.log('current date', new Date().toISOString())
+                console.log('Max difference date from correlationDate in Seconds', (new Date().getTime() - new Date(maxCorrelationDate || '').getTime()) / 1000)
 
             },
         });
