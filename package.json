@@ -9,6 +9,8 @@
     "typescript": "^5"
   },
   "dependencies": {
+    "@types/jsonwebtoken": "^9.0.9",
+    "jsonwebtoken": "^9.0.2",
     "k-state": "^1.0.4",
     "kafkajs": "^2.2.4",
     "sorted-btree": "^1.8.1",
