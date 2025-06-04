@@ -20,10 +20,11 @@ export type QueryParams = {
     sortKey?: string,
 } | {
     store: string,
-    type:'many',
+    type: 'many',
     limit: number,
     key: string,
     startSortKey?: string,
+    reversed?: boolean,
 }
 
 
@@ -32,6 +33,19 @@ const storeData: {
         [key: string]: { item?: any, btree?: Btree<any, any> }
     } | undefined
 } = {}
+
+const getBtreeReversed = (btree: Btree<any, any>, highestKey: string | undefined, limit?: number) => {
+
+    const entries: [any, any][] = []
+    for (let pair of btree.entriesReversed(highestKey)) {
+        entries.push(pair);
+        if (limit && entries.length >= limit) {
+            return entries;
+        }
+    }
+    return entries
+
+}
 
 export const startStoreServer = async (port: number) => {
     await startHttp2Server(port, async (path, payload) => {
@@ -45,7 +59,7 @@ export const startStoreServer = async (port: number) => {
                     storeData[store][key] = {};
                 }
                 if (!sortKey) {
-                    storeData[store][key].item = {...storeData[store][key].item, ...data};
+                    storeData[store][key].item = { ...storeData[store][key].item, ...data };
                 }
                 else {
                     if (!storeData[store][key].btree) {
@@ -93,7 +107,7 @@ export const startStoreServer = async (port: number) => {
                         }
                     }
                 } else if (queryParams.type === 'many') {
-                    const { store, key, limit, startSortKey } = queryParams;
+                    const { store, key, limit, startSortKey, reversed } = queryParams;
                     if (!storeData[store]) {
                         return [] as QueryResult[]
                     }
@@ -104,10 +118,10 @@ export const startStoreServer = async (port: number) => {
                     if (!btree) {
                         return [] as QueryResult[]
                     }
-                  
+
 
                     if (startSortKey) {
-                        const items = btree.getRange(startSortKey, btree.maxKey(), true, limit);
+                        const items = reversed ? getBtreeReversed(btree, startSortKey, limit) : btree.getRange(startSortKey, btree.maxKey(), true, limit);
                         return items.map(([sk, v]) => {
                             return {
                                 data: v,
@@ -116,7 +130,7 @@ export const startStoreServer = async (port: number) => {
                             } as QueryResult
                         })
                     } else {
-                        const items = btree.getRange(btree.minKey(), btree.maxKey(), true, limit);
+                        const items =reversed ? getBtreeReversed(btree, startSortKey, limit) : btree.getRange(btree.minKey(), btree.maxKey(), true, limit);
                         return items.map(([sk, v]) => {
                             return {
                                 data: v,

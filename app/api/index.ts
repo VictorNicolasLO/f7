@@ -130,6 +130,7 @@ async function handlePersonalFeed(req: Request, store: QueryStore) {
         limit,
         startSortKey,
         key: userKey,
+        reversed: true,
     });
     const posts = await Promise.all(postKeys.map(({ sortKey }) => store.query({
         store: POST_STORE,
@@ -141,19 +142,47 @@ async function handlePersonalFeed(req: Request, store: QueryStore) {
 
 async function handleGlobalFeed(req: Request, store: QueryStore) {
     const { startSortKey, limit } = await req.json();
+    console.time('Global Feed Query');
     const postKeys = await store.query({
         store: FEED_STORE,
         type: 'many',
         limit,
         startSortKey,
         key: 'global',
+        reversed: true,
     });
     const posts = await Promise.all(postKeys.map(({ sortKey }) => store.query({
         store: POST_STORE,
         type: 'one',
         key: sortKey!,
     })));
-    return withCORS(Response.json({ status: 'ok', data: posts }, responseInit));
+    const postsByUserId = Object.groupBy(posts, post => post[0]?.data.userKey);
+    const users = await Promise.all(Object.keys(postsByUserId).map(async userKey => {
+        console.log(`Fetching user data for key: ${userKey}`);
+        const userData = await store.query({
+            store: ACTIVE_USERS_BY_KEY_STORE,
+            type: 'one',
+            key: userKey,
+        });
+        console.log(`Fetched user data for key: ${userKey}`, userData);
+        return {
+            userKey,
+            username: userData[0] ? userData[0].data.username : 'Unknown User',
+        };
+    }));
+    const postsWithUsernames = posts.map((post, index) => {
+        const userKey = post[0]?.data.userKey;
+        const user = users.find(u => u.userKey === userKey);
+        return {
+            ...post[0],
+            data: {
+                ...post[0].data,
+                username: user ? user.username : 'Unknown User',
+            }
+        };
+    });
+    console.timeEnd('Global Feed Query');
+    return withCORS(Response.json({ status: 'ok', data: postsWithUsernames }, responseInit));
 }
 
 async function handleComments(req: Request, store: QueryStore) {
@@ -201,6 +230,7 @@ async function handleUserTimeline(req: Request, store: QueryStore) {
         limit,
         startSortKey,
         key: userKey,
+        reversed: true,
     });
     const usernamePromise = store.query({
         store: ACTIVE_USERS_BY_KEY_STORE,
