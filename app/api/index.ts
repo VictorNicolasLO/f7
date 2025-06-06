@@ -13,6 +13,7 @@ import { FOLLOWERS_STORE } from "../views/followers"
 import { POST_STORE } from "../views/post"
 import { USER_TIMELINE } from "../views/user-timeline"
 import { getAccessToken, getUserCredentials, validateAccessToken } from "./auth"
+import { USER_POST_INTERACTION_STORE } from "../views"
 const headers = {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
@@ -68,13 +69,16 @@ async function handlePost(req: Request, kActorBus: KActorBus) {
 }
 
 async function handleLike(req: Request, kActorBus: KActorBus) {
+    
     const { jwt, postKey } = await req.json();
     const [error, userData] = validateAccessToken(jwt);
     if (error) {
         return withCORS(Response.json({ error }, { status: 401, headers }), 401);
     }
     const { userIdB64 } = userData;
+    console.time('Handle Like');
     await kActorBus.send((ref) => ref(Like, `${userIdB64}|${postKey}`).like());
+    console.timeEnd('Handle Like');
     return withCORS(new Response("OK", responseInit));
 }
 
@@ -141,7 +145,12 @@ async function handlePersonalFeed(req: Request, store: QueryStore) {
 }
 
 async function handleGlobalFeed(req: Request, store: QueryStore) {
-    const { startSortKey, limit } = await req.json();
+    const { startSortKey, limit, reverse, jwt } = await req.json();
+    const [error, userData] = validateAccessToken(jwt);
+    if (error) {
+        return withCORS(Response.json({ error }, { status: 401, headers }), 401);
+    }
+    const { userIdB64 } = userData;
     console.time('Global Feed Query');
     const postKeys = await store.query({
         store: FEED_STORE,
@@ -149,8 +158,13 @@ async function handleGlobalFeed(req: Request, store: QueryStore) {
         limit,
         startSortKey,
         key: 'global',
-        reversed: true,
+        reversed: reverse !== undefined ? reverse : true,
     });
+    const interationsPromise = Promise.all(postKeys.map(({ sortKey }) => store.query({
+        store: USER_POST_INTERACTION_STORE,
+        type: 'one',
+        key: `${userIdB64}|${sortKey}`,
+    })));
     const posts = await Promise.all(postKeys.map(({ sortKey }) => store.query({
         store: POST_STORE,
         type: 'one',
@@ -158,13 +172,11 @@ async function handleGlobalFeed(req: Request, store: QueryStore) {
     })));
     const postsByUserId = Object.groupBy(posts, post => post[0]?.data.userKey);
     const users = await Promise.all(Object.keys(postsByUserId).map(async userKey => {
-        console.log(`Fetching user data for key: ${userKey}`);
         const userData = await store.query({
             store: ACTIVE_USERS_BY_KEY_STORE,
             type: 'one',
             key: userKey,
         });
-        console.log(`Fetched user data for key: ${userKey}`, userData);
         return {
             userKey,
             username: userData[0] ? userData[0].data.username : 'Unknown User',
@@ -181,8 +193,20 @@ async function handleGlobalFeed(req: Request, store: QueryStore) {
             }
         };
     });
+    const interactions = await interationsPromise;
+    const postWithuserNamesAndResults = interactions.map((interaction, index) => {
+        if (interaction[0]) {
+            postsWithUsernames[index].data.hasLike = interaction[0].data.like || false;
+            postsWithUsernames[index].data.hasView = interaction[0].data.view || false;
+        } else {
+            postsWithUsernames[index].data.hasLike = false;
+            postsWithUsernames[index].data.hasView = false;
+        }
+        return postsWithUsernames[index];
+    });
+
     console.timeEnd('Global Feed Query');
-    return withCORS(Response.json({ status: 'ok', data: postsWithUsernames }, responseInit));
+    return withCORS(Response.json({ status: 'ok', data: postWithuserNamesAndResults }, responseInit));
 }
 
 async function handleComments(req: Request, store: QueryStore) {
@@ -223,14 +247,15 @@ async function handleActiveUsers(req: Request, store: QueryStore) {
 }
 
 async function handleUserTimeline(req: Request, store: QueryStore) {
-    const { startSortKey, limit, userKey } = await req.json();
+    const { startSortKey, limit, userKey, reverse } = await req.json();
+    console.log(reverse)
     const postKeysPromise = store.query({
         store: USER_TIMELINE,
         type: 'many',
         limit,
         startSortKey,
         key: userKey,
-        reversed: true,
+        reversed: reverse !== undefined ? reverse : true,
     });
     const usernamePromise = store.query({
         store: ACTIVE_USERS_BY_KEY_STORE,
@@ -244,7 +269,7 @@ async function handleUserTimeline(req: Request, store: QueryStore) {
         type: 'one',
         key: sortKey!,
     })));
-    return withCORS(Response.json({ status: 'ok', data: posts, username: usernameData[0] ? usernameData[0].data.username : undefined}, responseInit));
+    return withCORS(Response.json({ status: 'ok', data: posts, username: usernameData[0] ? usernameData[0].data.username : undefined }, responseInit));
 }
 
 export const startServer = (store: QueryStore, kActorBus: KActorBus, port: number) =>

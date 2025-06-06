@@ -2,7 +2,7 @@ import { getClassMethodMap, KActor, type ClassMethodMap, type KActorBus, type Re
 import { Kafka } from 'kafkajs'
 import { createBatcher, createDeferredPromise } from './utils'
 
-export const createKActorBus = async (kafkaBrokers: string[], kActors: (new () => KActor)[]): Promise<KActorBus>  => {
+export const createKActorBus = async (kafkaBrokers: string[], kActors: (new () => KActor)[]): Promise<KActorBus> => {
     const classesMap = kActors.reduce((acc, clz, index) => {
         acc[clz.name] = { index, methodsMap: getClassMethodMap(clz) }
         return acc
@@ -12,37 +12,39 @@ export const createKActorBus = async (kafkaBrokers: string[], kActors: (new () =
         clientId: 'kactor',
         brokers: kafkaBrokers
     })
-  
+
     const producer = kafka.producer()
 
-    
+
     await producer.connect()
 
-    let messages:any = []
+    let messages: any = []
     let deferredPromise: any = undefined
     let ongoingDeferredPromise: any = undefined
     const startQueue = async () => {
-                    ongoingDeferredPromise = deferredPromise
-                    const messagesToSend = messages
-                    
-                    messages = []
-                    deferredPromise = undefined
-                    await producer.send({
-                        topic: 'kactors',
-                        messages: messagesToSend,
-                        compression: 1,
-                    })
-                    console.log('sent messages', messagesToSend.length)
-                    
-                    ongoingDeferredPromise.resolve()
-                    
+        ongoingDeferredPromise = deferredPromise
+        const messagesToSend = messages
 
-                }
+        messages = []
+        deferredPromise = undefined
+        console.time('send messages ' + messagesToSend.length)
+        await producer.send({
+            topic: 'kactors',
+            messages: messagesToSend,
+            compression: 1,
+        })
+        console.timeEnd('send messages ' + messagesToSend.length)
+        console.log('sent messages', messagesToSend.length)
+
+        ongoingDeferredPromise.resolve()
+
+
+    }
 
     return {
         send: async (cb: (ref: <T>(clz: new () => T, key: string) => Ref<T>) => any) => {
-            const correlationDate =  Date.now()
-            if(ongoingDeferredPromise) {
+            const correlationDate = Date.now()
+            if (ongoingDeferredPromise) {
                 await ongoingDeferredPromise.promise
             }
             if (!deferredPromise) {
@@ -62,7 +64,7 @@ export const createKActorBus = async (kafkaBrokers: string[], kActors: (new () =
                                         methodIndex: classesMap[clz.name].methodsMap.methods[prop as string],
                                         args: args,
                                         correlationDate
-                                    }) ,
+                                    }),
 
                                 })
                                 return undefined;

@@ -32,6 +32,7 @@ export const getUserCredentials = (username: string, password: string) => {
 }
 
 export const getAccessToken = (refreshJwt: string): ['Token expired' | "Invalid refresh token", null ] | [null, string] => {
+
     try {
         const decoded = jwt.verify(refreshJwt, jwtSecret) as TokenData
         const currTS = nowInSeconds();
@@ -66,6 +67,7 @@ export const validateAccessToken = (accessJwt: string): ['Token expired' | "Inva
             publicUsername: decoded.publicUsername,
         }]
     } catch (error) {
+        console.log("Error validating access token:", error)
        return ["Invalid access token", null]
     }
 }

@@ -5,7 +5,7 @@ export * from './followed';
 export * from './followers';
 export * from './post';
 export * from './user-timeline';
-
+export * from  './user-post-interaction'
 
 // Array of all views
 import { activeUsersView, activeUsersByKeyView } from './active-users';
@@ -15,7 +15,7 @@ import { followedView } from './followed';
 import { followerView } from './followers';
 import { post, metrics } from './post';
 import { timeline } from './user-timeline';
-
+import {likes,views} from './user-post-interaction';
 export const allViews = [ // IMPORTANT keep the order of the views
     activeUsersView,
     commentView,
@@ -26,5 +26,7 @@ export const allViews = [ // IMPORTANT keep the order of the views
     post,
     metrics,
     timeline,
-    activeUsersByKeyView
+    activeUsersByKeyView,
+    likes,
+    views
 ];

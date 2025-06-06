@@ -10,6 +10,6 @@ export const startMemoryUsage = () => {
         if (memoryUsage.arrayBuffers !== undefined) {
             console.log(`Array Buffers: ${(memoryUsage.arrayBuffers / 1024 / 1024).toFixed(2)} MB`);
         }
-    }, 3000)
+    }, 10000)
 
 }
