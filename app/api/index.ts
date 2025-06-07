@@ -14,6 +14,8 @@ import { POST_STORE } from "../views/post"
 import { USER_TIMELINE } from "../views/user-timeline"
 import { getAccessToken, getUserCredentials, validateAccessToken } from "./auth"
 import { USER_POST_INTERACTION_STORE } from "../views"
+import { postsWithUsersAndInteractions } from "./queries/posts-timeline"
+import { commentsWithUsers } from "./queries/comments"
 const headers = {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
@@ -69,7 +71,7 @@ async function handlePost(req: Request, kActorBus: KActorBus) {
 }
 
 async function handleLike(req: Request, kActorBus: KActorBus) {
-    
+
     const { jwt, postKey } = await req.json();
     const [error, userData] = validateAccessToken(jwt);
     if (error) {
@@ -127,21 +129,22 @@ async function handleUnfollow(req: Request, kActorBus: KActorBus) {
 }
 
 async function handlePersonalFeed(req: Request, store: QueryStore) {
-    const { userKey, startSortKey, limit } = await req.json();
+    const { startSortKey, limit, jwt, reverse } = await req.json();
+    const [error, userData] = validateAccessToken(jwt);
+    if (error) {
+        return withCORS(Response.json({ error }, { status: 401, headers }), 401);
+    }
+    const { userIdB64 } = userData;
     const postKeys = await store.query({
         store: FEED_STORE,
         type: 'many',
         limit,
         startSortKey,
-        key: userKey,
-        reversed: true,
+        key: userIdB64,
+        reversed: reverse !== undefined ? reverse : true,
     });
-    const posts = await Promise.all(postKeys.map(({ sortKey }) => store.query({
-        store: POST_STORE,
-        type: 'one',
-        key: sortKey!,
-    })));
-    return withCORS(Response.json({ status: 'ok', data: posts }, responseInit));
+    const postsWithAdditionalData = await postsWithUsersAndInteractions(postKeys, store, userIdB64);
+    return withCORS(Response.json({ status: 'ok', data: postsWithAdditionalData }, responseInit));
 }
 
 async function handleGlobalFeed(req: Request, store: QueryStore) {
@@ -160,65 +163,24 @@ async function handleGlobalFeed(req: Request, store: QueryStore) {
         key: 'global',
         reversed: reverse !== undefined ? reverse : true,
     });
-    const interationsPromise = Promise.all(postKeys.map(({ sortKey }) => store.query({
-        store: USER_POST_INTERACTION_STORE,
-        type: 'one',
-        key: `${userIdB64}|${sortKey}`,
-    })));
-    const posts = await Promise.all(postKeys.map(({ sortKey }) => store.query({
-        store: POST_STORE,
-        type: 'one',
-        key: sortKey!,
-    })));
-    const postsByUserId = Object.groupBy(posts, post => post[0]?.data.userKey);
-    const users = await Promise.all(Object.keys(postsByUserId).map(async userKey => {
-        const userData = await store.query({
-            store: ACTIVE_USERS_BY_KEY_STORE,
-            type: 'one',
-            key: userKey,
-        });
-        return {
-            userKey,
-            username: userData[0] ? userData[0].data.username : 'Unknown User',
-        };
-    }));
-    const postsWithUsernames = posts.map((post, index) => {
-        const userKey = post[0]?.data.userKey;
-        const user = users.find(u => u.userKey === userKey);
-        return {
-            ...post[0],
-            data: {
-                ...post[0].data,
-                username: user ? user.username : 'Unknown User',
-            }
-        };
-    });
-    const interactions = await interationsPromise;
-    const postWithuserNamesAndResults = interactions.map((interaction, index) => {
-        if (interaction[0]) {
-            postsWithUsernames[index].data.hasLike = interaction[0].data.like || false;
-            postsWithUsernames[index].data.hasView = interaction[0].data.view || false;
-        } else {
-            postsWithUsernames[index].data.hasLike = false;
-            postsWithUsernames[index].data.hasView = false;
-        }
-        return postsWithUsernames[index];
-    });
 
+    const postsWithAdditionalData = await postsWithUsersAndInteractions(postKeys, store, userIdB64);
     console.timeEnd('Global Feed Query');
-    return withCORS(Response.json({ status: 'ok', data: postWithuserNamesAndResults }, responseInit));
+    return withCORS(Response.json({ status: 'ok', data: postsWithAdditionalData }, responseInit));
 }
 
 async function handleComments(req: Request, store: QueryStore) {
-    const { startSortKey, limit, postKey } = await req.json();
+    const { startSortKey, limit, postKey, reverse } = await req.json();
     const comments = await store.query({
         store: COMMENTS_STORE,
         type: 'many',
         limit,
         startSortKey,
         key: postKey,
+        reversed: reverse !== undefined ? reverse : true,
     });
-    return withCORS(Response.json({ status: 'ok', data: comments }, responseInit));
+    const commentsWithUsersResponse = await commentsWithUsers(comments, store);
+    return withCORS(Response.json({ status: 'ok', data: commentsWithUsersResponse }, responseInit));
 }
 
 async function handleActiveUsers(req: Request, store: QueryStore) {
@@ -246,10 +208,64 @@ async function handleActiveUsers(req: Request, store: QueryStore) {
     return withCORS(Response.json({ status: 'ok', data: activeUsers }, responseInit));
 }
 
+async function handleUserByKey(req: Request, store: QueryStore) {
+    const { userKey } = await req.json();
+    const userData = await store.query({
+        store: ACTIVE_USERS_BY_KEY_STORE,
+        type: 'one',
+        key: userKey,
+    });
+    if (userData.length === 0) {
+        return withCORS(Response.json({ status: 'error', message: 'User not found' }, { status: 404, headers }), 404);
+    }
+    return withCORS(Response.json({ status: 'ok', data: userData[0] }, responseInit));
+}
+
+async function handlePostByKey(req: Request, store: QueryStore) {
+    const { postKey } = await req.json();
+    const postdata = await store.query({
+        store: POST_STORE,
+        type: 'one',
+        key: postKey,
+    });
+    if (postdata.length === 0) {
+        return withCORS(Response.json({ status: 'error', message: 'Post not found' }, { status: 404, headers }), 404);
+    }
+
+    const [username, interactionData] = await Promise.all([
+        await store.query({
+            store: ACTIVE_USERS_BY_KEY_STORE,
+            type: 'one',
+            key: postdata[0]?.data.userKey,
+        }),
+        await store.query({
+            store: USER_POST_INTERACTION_STORE,
+            type: 'one',
+            key: `${postdata[0]?.data.userKey}|${postKey}`,
+        })]
+    );
+
+    if (interactionData.length > 0) {
+        postdata[0].data.hasLike = interactionData[0].data.like || false;
+        postdata[0].data.hasView = interactionData[0].data.view || false;
+    } else {
+        postdata[0].data.hasLike = false;
+        postdata[0].data.hasView = false;
+    }
+    postdata[0].data.username = username[0] ? username[0].data.username : 'Unknown User';
+
+
+    return withCORS(Response.json({ status: 'ok', data: postdata[0] }, responseInit));
+}
+
 async function handleUserTimeline(req: Request, store: QueryStore) {
-    const { startSortKey, limit, userKey, reverse } = await req.json();
+    const { startSortKey, limit, userKey, reverse, jwt } = await req.json();
+    const [error, userData] = validateAccessToken(jwt);
+    if (error) {
+        return withCORS(Response.json({ error }, { status: 401, headers }), 401);
+    }
     console.log(reverse)
-    const postKeysPromise = store.query({
+    const postKeys = await store.query({
         store: USER_TIMELINE,
         type: 'many',
         limit,
@@ -257,19 +273,9 @@ async function handleUserTimeline(req: Request, store: QueryStore) {
         key: userKey,
         reversed: reverse !== undefined ? reverse : true,
     });
-    const usernamePromise = store.query({
-        store: ACTIVE_USERS_BY_KEY_STORE,
-        type: 'one',
-        key: userKey,
-    });
-    const [postKeys, usernameData] = await Promise.all([postKeysPromise, usernamePromise]);
 
-    const posts = await Promise.all(postKeys.map(({ sortKey }) => store.query({
-        store: POST_STORE,
-        type: 'one',
-        key: sortKey!,
-    })));
-    return withCORS(Response.json({ status: 'ok', data: posts, username: usernameData[0] ? usernameData[0].data.username : undefined }, responseInit));
+    const posts = await postsWithUsersAndInteractions(postKeys, store, userData.userIdB64);
+    return withCORS(Response.json({ status: 'ok', data: posts }, responseInit));
 }
 
 export const startServer = (store: QueryStore, kActorBus: KActorBus, port: number) =>
@@ -325,6 +331,12 @@ export const startServer = (store: QueryStore, kActorBus: KActorBus, port: numbe
             }
             if (pathname === '/queries/user-timeline' && req.method === 'POST') {
                 return (await handleUserTimeline(req, store)).response;
+            }
+            if (pathname === '/queries/user-by-key' && req.method === 'POST') {
+                return (await handleUserByKey(req, store)).response;
+            }
+            if (pathname === '/queries/post-by-key' && req.method === 'POST') {
+                return (await handlePostByKey(req, store)).response;
             }
             return new Response('Not found', { status: 404, headers });
         },
