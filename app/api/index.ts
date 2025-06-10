@@ -209,15 +209,31 @@ async function handleActiveUsers(req: Request, store: QueryStore) {
 }
 
 async function handleUserByKey(req: Request, store: QueryStore) {
-    const { userKey } = await req.json();
-    const userData = await store.query({
+    const { userKey, jwt } = await req.json();
+    const [error, jwtUserData] = validateAccessToken(jwt);
+    if (error) {
+        return withCORS(Response.json({ error }, { status: 401, headers }), 401);
+    }
+    const { userIdB64 } = jwtUserData;
+    const followDataPromise = store.query({
+        store: FOLLOWERS_STORE,
+        type: 'one',
+        key: userIdB64,
+        sortKey: userKey,
+    });
+    
+    const userDataPromise = store.query({
         store: ACTIVE_USERS_BY_KEY_STORE,
         type: 'one',
         key: userKey,
     });
+    const [userData, followData] = await Promise.all([userDataPromise, followDataPromise]);
+    
     if (userData.length === 0) {
         return withCORS(Response.json({ status: 'error', message: 'User not found' }, { status: 404, headers }), 404);
     }
+    const isFollowing = followData.length > 0 ? followData[0].data.active : false;
+    userData[0].data.isFollowing = isFollowing;
     return withCORS(Response.json({ status: 'ok', data: userData[0] }, responseInit));
 }
 
@@ -264,7 +280,6 @@ async function handleUserTimeline(req: Request, store: QueryStore) {
     if (error) {
         return withCORS(Response.json({ error }, { status: 401, headers }), 401);
     }
-    console.log(reverse)
     const postKeys = await store.query({
         store: USER_TIMELINE,
         type: 'many',
