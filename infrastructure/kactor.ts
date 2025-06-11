@@ -3,6 +3,7 @@ import {
     createKState
 } from 'k-state'
 import { Kafka } from 'kafkajs'
+import { createLevelDBStore } from './persistence/level-db'
 export type Ref<T> = Pick<T, Exclude<keyof T, "state" | "ref" | "key">>
 export abstract class KActor {
     key!: string
@@ -71,7 +72,7 @@ export const startKActorSystem = async (kafkaBrokers: string[], kActors: (new ()
         }]
     })
     await admin.disconnect()
-    const store = createInMemoryStore()
+    const store = createLevelDBStore('./kactors-states')
     const kstate = createKState(store, kafka)
 
     kstate.fromTopic<{actorState: any, classIndex: number, correlationDate:number }>('kactors').reduce((message: KActorMessage, key, state) => {

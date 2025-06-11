@@ -13,6 +13,7 @@
     "jsonwebtoken": "^9.0.2",
     "k-state": "^1.0.4",
     "kafkajs": "^2.2.4",
+    "level": "^10.0.0",
     "sorted-btree": "^1.8.1",
     "ulid": "^3.0.0"
   }
