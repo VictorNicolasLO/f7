@@ -54,6 +54,7 @@ export class UserFollowers extends KActor {
     }
 
     fanout(postKey: string) {
+        console.log(this.state)
         const userKey = this.key
         const chunkNumber = 0
         const chunkKey = `${userKey}|${chunkNumber}`

@@ -19,7 +19,8 @@ export class FollowersChunk extends KActor {
                 followers: [followerKey]
             }
         }
-        this.ref(Follower, followerKey).setChunkKey(this.key)
+        const userChunkKey = this.key.split('|')[USER_PART_KEY]
+        this.ref(Follower,`${followerKey}|${userChunkKey}` ).setChunkKey(this.key)
     }
 
     removeFollower(followerKey: string) {

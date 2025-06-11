@@ -10,7 +10,7 @@ export * from  './user-post-interaction'
 // Array of all views
 import { activeUsersView, activeUsersByKeyView } from './active-users';
 import { commentView } from './comments';
-import { globalFeedView, userFeedView } from './feed';
+import {  userFeedView } from './feed';
 import { followedView } from './followed';
 import { followerView } from './followers';
 import { post, metrics } from './post';
@@ -19,7 +19,7 @@ import {likes,views} from './user-post-interaction';
 export const allViews = [ // IMPORTANT keep the order of the views
     activeUsersView,
     commentView,
-    globalFeedView,
+    // globalFeedView,
     userFeedView,
     followedView,
     followerView,

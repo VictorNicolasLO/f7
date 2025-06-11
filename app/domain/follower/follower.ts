@@ -16,18 +16,18 @@ export class Follower extends KActor {
     state!: FollowerState
 
     follow() {
-        if(this.state && this.state.active)
+        if (this.state && this.state.active)
             return
         const keys = this.key.split('|')
         const followerKey = keys[FOLLOWER_PART_KEY]
         const followedKey = keys[FOLLOWED_PART_KEY]
-        if(!this.state)
-            this.state = {active: true}
+        if (!this.state)
+            this.state = { active: true }
         if (!this.state.active) {
             this.state = {
                 active: true
             }
-        }else {
+        } else {
             this.state.active = true
         }
         this.ref(UserFollowers, followedKey).addFollower(followerKey)
@@ -35,25 +35,28 @@ export class Follower extends KActor {
     }
 
     setChunkKey(chunkKey: string) {
-        if(!this.state)
+        if (!this.state)
             return
         const keys = this.key.split('|')
         const followerKey = keys[FOLLOWER_PART_KEY]
         const followedKey = keys[FOLLOWED_PART_KEY]
-        if(this.state.active)
-            this.state.chunkKey = this.state.chunkKey
+        if (this.state.active) {
+            this.state.chunkKey = chunkKey
+        }
         else
             this.ref(UserFollowers, followedKey).removeFollower(followerKey, chunkKey)
     }
-    
+
     unfollow() {
-        if(this.state && !this.state.active)
+        if (this.state && !this.state.active)
             return
         const keys = this.key.split('|')
         const followerKey = keys[FOLLOWER_PART_KEY]
         const followedKey = keys[FOLLOWED_PART_KEY]
         this.state.active = false
-        if(this.state.chunkKey) 
+        
+        if (this.state.chunkKey)
             this.ref(UserFollowers, followedKey).removeFollower(followerKey, this.state.chunkKey)
+        this.state.chunkKey = undefined
     }
 }

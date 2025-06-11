@@ -184,24 +184,32 @@ async function handleComments(req: Request, store: QueryStore) {
 }
 
 async function handleActiveUsers(req: Request, store: QueryStore) {
-    const { limit, postKey, textSearch } = await req.json();
+    const { limit, textSearch, jwt } = await req.json();
+    const [error, userData] = validateAccessToken(jwt);
+    if (error) {
+        return withCORS(Response.json({ error }, { status: 401, headers }), 401);
+    }
+    const { userIdB64 } = userData;
     const users = await store.query({
         store: ACTIVE_USERS_STORE,
         type: 'many',
         limit,
-        key: postKey,
+        key: textSearch.charAt(0) || '',
         startSortKey: textSearch,
+
     });
     const activeUsers = await Promise.all(users.map(async ({ data, sortKey }) => {
         const followData = await store.query({
             store: FOLLOWERS_STORE,
             type: 'one',
-            key: data.userKey,
+            key: userIdB64 ,
+            sortKey: data.userKey,
         });
-        const isFollowing = followData[0] ? followData[0].data.active : false;
+
+        const isFollowing = followData[0] && followData[0].data? followData[0].data.active : false;
         return {
             userKey: data.userKey,
-            username: sortKey,
+            username: data.username,
             isFollowing,
         };
     }));
@@ -232,7 +240,8 @@ async function handleUserByKey(req: Request, store: QueryStore) {
     if (userData.length === 0) {
         return withCORS(Response.json({ status: 'error', message: 'User not found' }, { status: 404, headers }), 404);
     }
-    const isFollowing = followData.length > 0 ? followData[0].data.active : false;
+    console.log('followData', followData);
+    const isFollowing = followData.length > 0 && followData[0] && followData[0].data ? followData[0].data.active : false;
     userData[0].data.isFollowing = isFollowing;
     return withCORS(Response.json({ status: 'ok', data: userData[0] }, responseInit));
 }

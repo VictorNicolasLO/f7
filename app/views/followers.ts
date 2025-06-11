@@ -7,7 +7,6 @@ export const FOLLOWERS_STORE = 'followers_store';
 
 export const followerView = view(Follower, (key, state) => {
     // key format: followerId|followedId
-    console.log('followerView', key, state);
     if (!state)
         return
     const [followerId, followedId] = key.split('|');
