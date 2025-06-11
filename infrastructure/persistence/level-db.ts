@@ -11,7 +11,7 @@ const getLevelDBStore = (
     partition: number
 ) => {
 
-    const leveldb = new Level<string, any>(`${basePath}/${topic}/${partition}`, {
+    const leveldb = new Level<string, any>(`${basePath}/${topic}/partition-${partition}`, {
         valueEncoding: 'json',
         
     })

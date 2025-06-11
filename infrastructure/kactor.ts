@@ -72,7 +72,7 @@ export const startKActorSystem = async (kafkaBrokers: string[], kActors: (new ()
         }]
     })
     await admin.disconnect()
-    const store = createLevelDBStore('./kactors-states')
+    const store = createLevelDBStore('./_storage-files/kactors')
     const kstate = createKState(store, kafka)
 
     kstate.fromTopic<{actorState: any, classIndex: number, correlationDate:number }>('kactors').reduce((message: KActorMessage, key, state) => {
