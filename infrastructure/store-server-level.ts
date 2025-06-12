@@ -120,18 +120,25 @@ export const startStoreServerLevel = async (port: number) => {
                     const { key, limit, startSortKey, reversed } = queryParams;
                     const prefix = `${key}:`
                     const results: QueryResult[] = []
-                    let count = 0
-                    const opts: any = { keys: true, values: true }
-                    if (reversed) opts.reverse = true
-                    opts.limit = limit
-                    if (startSortKey) opts.gte = `${key}:${startSortKey}`
-                    else opts.gte = prefix
-                    opts.lte = `${key}:` // Use a character that is lexicographically greater than any possible sort key
-                    for await (const [k, v] of db.iterator(opts)) {
+
+                  
+                   
+                 
+                    // `${key}:${startSortKey}`
+                    
+                    // Use a character that is lexicographically greater than any possible sort key
+                    for await (const [k, v] of db.iterator({
+                        keys: true,
+                        values: true,
+                        reverse: reversed,
+                        limit: limit,
+                        ...reversed ? { lte: prefix + (startSortKey || '\uffff'), gt: prefix } : { gte: prefix + (startSortKey || ''), lt: prefix + '\uffff' }
+                        
+                    })) {
                         const [, sortKey] = k.split(':', 2)
                         results.push({ data: v, key, sortKey })
-                        count++
-                        if (limit && count >= limit) break
+                        // count++
+                        // if (limit && count >= limit) break
                     }
                     return results
                 }
