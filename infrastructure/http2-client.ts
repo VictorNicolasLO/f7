@@ -3,13 +3,25 @@ import { createDeferredPromise } from "./utils";
 
 
 export const createHttp2Client = (url: string) => {
-    const client = connect(url)
-    client.on("error", (err) => {
-        console.error("Client error:", err);
-    });
-    client.on("connect", async () => {
+    let client = connect(url)
+
+
+    const onConnect = async () => {
         console.log("Connected to server");
-    })
+    }
+
+    const onError = (err: any) => {
+        console.error("Client error:", err);
+        setTimeout(() => {
+            console.log("Reconnecting to server...");
+            client = connect(url);
+            client.on("error", onError);
+            client.on("connect", onConnect);
+        }, 2000)
+    }
+    client.on("error", onError);
+    client.on("connect", onConnect)
+
 
     const request = async (path: string, payload: any) => {
         const { promise, resolve } = createDeferredPromise();
@@ -31,6 +43,8 @@ export const createHttp2Client = (url: string) => {
         req.end();
         return await promise
     }
+
+
     return {
         request,
         _client: client,
