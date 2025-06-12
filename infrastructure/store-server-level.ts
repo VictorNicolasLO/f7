@@ -1,11 +1,13 @@
 import { createServer } from "node:http2";
 import { start } from "node:repl";
-import Btree from 'sorted-btree'
 import { startHttp2Server } from "./http2-server";
 import type { QueryPrepResponse } from './view-handler';
 import { createHttp2Client } from "./http2-client";
 import { getPartition } from "./utils";
-
+import {
+    Level
+} from 'level'
+import { join } from 'node:path'
 
 // type QueryExecResult = QueryParams | QueryParams[]
 export type QueryResult = { key: string, sortKey?: string, data: any }
@@ -28,117 +30,110 @@ export type QueryParams = {
 }
 
 
-const storeData: {
-    [store: string]: {
-        [key: string]: { item?: any, btree?: Btree<any, any> }
-    } | undefined
-} = {}
+// LevelDB instance cache per store
+const dbs: { [store: string]: Level<string, any> } = {}
 
-const getBtreeReversed = (btree: Btree<any, any>, highestKey: string | undefined, limit?: number) => {
-
-    const entries: [any, any][] = []
-    for (let pair of btree.entriesReversed(highestKey)) {
-        entries.push(pair);
-        if (limit && entries.length >= limit) {
-            return entries;
-        }
+function getDb(store: string) {
+    if (!dbs[store]) {
+        dbs[store] = new Level<string, any>(join('_storage-files/views', store), { valueEncoding: 'json' })
     }
-    return entries
+    return dbs[store]
+}
+
+const locks = new Map<string, ((unlock: () => void) => void)[]>();
+
+const lockKey = (key: string) => {
+    return new Promise<() => void >((resolve) => {
+        const unlock = () => {
+            const resolves = locks.get(key);
+            if(!resolves)
+                return;
+            const resol = resolves.pop();
+            if (resol) {
+                resol(unlock);
+            } else {
+                locks.delete(key);
+            }
+
+        }
+        if (!locks.has(key)) {
+            locks.set(key, []);
+            resolve(unlock);
+        }else{
+            locks.get(key)?.push(resolve);
+        }
+
+    })
 
 }
 
-export const startStoreServer = async (port: number) => {
+
+export const startStoreServerLevel = async (port: number) => {
     await startHttp2Server(port, async (path, payload) => {
         switch (path) {
             case '/store/mutate': {
                 const { data, key, store, sortKey } = payload as QueryPrepResponse;
-                if (!storeData[store]) {
-                    storeData[store] = {};
-                }
-                if (!storeData[store][key]) {
-                    storeData[store][key] = {};
-                }
+                const db = getDb(store)
+
                 if (!sortKey) {
-                    storeData[store][key].item = { ...storeData[store][key].item, ...data };
-                }
-                else {
-                    if (!storeData[store][key].btree) {
-                        storeData[store][key].btree = new Btree();
-                    }
-                    const val = storeData[store][key].btree.get(sortKey, undefined)
-                    storeData[store][key].btree.set(sortKey, {
-                        ...val,
-                        ...data
-                    });
+                    // Merge with existing if present
+                    const unlock = await lockKey(key)
+                    const prev = await db.get(key)
+                    await db.put(key, { ...prev, ...data })
+                    unlock()
+                } else {
+                    // Merge with existing if present
+                    
+                    const dbKey = `${key}:${sortKey}`
+                    const unlock = await lockKey(dbKey)
+                    const prev = await db.get(dbKey)
+                    await db.put(dbKey, { ...prev, ...data })
+                    unlock()
                 }
                 return { status: 'ok' }
             }
             case '/store/query': {
                 const queryParams = payload as QueryParams;
+                const db = getDb(queryParams.store)
                 if (queryParams.type === 'one') {
-                    const { store, key, sortKey } = queryParams;
-                    if (!storeData[store]) {
-                        return [] as QueryResult[]
-                    }
-                    if (!storeData[store][key]) {
-                        return [] as QueryResult[]
-                    }
+                    const { key, sortKey } = queryParams;
+                    if (!key)
+                        return []
                     if (sortKey) {
-                        if (storeData[store][key].btree) {
-                            const content = storeData[store][key].btree.get(sortKey)
-                            return [{
-                                data: content,
-                                key: key,
-                                sortKey: sortKey
-                            }] as QueryResult[]
-                        } else {
-                            return [] as QueryResult[]
+                        const dbKey = `${key}:${sortKey}`
+                        const content = await db.get(dbKey)
+                        if (!content) {
+
+                            return []
                         }
+                        return [{ data: content, key, sortKey }] as QueryResult[]
 
                     } else {
-                        if (storeData[store][key].item) {
-                            return [{
-                                data: storeData[store][key].item,
-                                key: key,
-                                sortKey: undefined
-                            }] as QueryResult[]
-                        } else {
-                            return [] as QueryResult[]
+                        const content = await db.get(key)
+                        if (!content) {
+                            return []
                         }
+                        return [{ data: content, key, sortKey: undefined }] as QueryResult[]
+
                     }
                 } else if (queryParams.type === 'many') {
-                    const { store, key, limit, startSortKey, reversed } = queryParams;
-                    if (!storeData[store]) {
-                        return [] as QueryResult[]
+                    const { key, limit, startSortKey, reversed } = queryParams;
+                    const prefix = `${key}:`
+                    const results: QueryResult[] = []
+                    let count = 0
+                    const opts: any = { keys: true, values: true }
+                    if (reversed) opts.reverse = true
+                    opts.limit = limit
+                    if (startSortKey) opts.gte = `${key}:${startSortKey}`
+                    else opts.gte = prefix
+                    opts.lte = `${key}:` // Use a character that is lexicographically greater than any possible sort key
+                    for await (const [k, v] of db.iterator(opts)) {
+                        const [, sortKey] = k.split(':', 2)
+                        results.push({ data: v, key, sortKey })
+                        count++
+                        if (limit && count >= limit) break
                     }
-                    if (!storeData[store][key]) {
-                        return [] as QueryResult[]
-                    }
-                    const btree = storeData[store][key].btree;
-                    if (!btree) {
-                        return [] as QueryResult[]
-                    }
-
-
-                    if (startSortKey) {
-                        const items = reversed ? getBtreeReversed(btree, startSortKey, limit) : btree.getRange(startSortKey, btree.maxKey(), true, limit);
-                        return items.map(([sk, v]) => {
-                            return {
-                                data: v,
-                                key: key,
-                                sortKey: sk,
-                            } as QueryResult
-                        })
-                    } else {
-                        const items =reversed ? getBtreeReversed(btree, startSortKey, limit) : btree.getRange(btree.minKey(), btree.maxKey(), true, limit);
-                        return items.map(([sk, v]) => {
-                            return {
-                                data: v,
-                                key: key,
-                                sortKey: sk,
-                            } as QueryResult
-                        })
-                    }
+                    return results
                 }
             }
         }

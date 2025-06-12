@@ -21,7 +21,7 @@ export const postsWithUsersAndInteractions = async (postKeys: QueryResult[], sto
         });
         return {
             userKey,
-            username: userData[0] ? userData[0].data.username : 'Unknown User',
+            username: userData[0] && userData[0].data ? userData[0].data.username : 'Unknown User',
         };
     }));
     const postsWithUsernames = posts.map((post, index) => {

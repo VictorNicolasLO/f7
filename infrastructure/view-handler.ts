@@ -66,11 +66,13 @@ export const startViewHandler = async (
                     const valueObj = JSON.parse(valueStr)
                     const classIndex = valueObj.payload.classIndex
                     const actorState = valueObj.payload.actorState
-                    const correlationDate:number = valueObj.payload.correlationDate
+                    const correlationDate: number = valueObj.payload.correlationDate
                     maxCorrelationDate = maxCorrelationDate ? maxCorrelationDate > correlationDate ? maxCorrelationDate : correlationDate : correlationDate
+                    console.log('maxCorrelationDate', maxCorrelationDate)
+                    console.log('current date', new Date().toISOString())
                     const actorKey = keyStr.split('/')[1]
                     try {
-                        
+
                         const mutationQueries = viewsByActor[classIndex]
                             .map(({ viewExec }) => viewExec(actorKey, actorState))
                             .filter((viewRes) => viewRes !== undefined)
@@ -80,25 +82,25 @@ export const startViewHandler = async (
                                     shardClients[getPartition(mutationQuery.key, storeShards.length)]
                                         .request('/store/mutate', mutationQuery)
                                 ))
-                    
+
                     } catch (e) {
                         console.error('Error in view handler', e)
                         throw e
                     }
                 }))
-                console.log('maxCorrelationDate', maxCorrelationDate)
-                console.log('current date', new Date().toISOString())
-                console.log('Max difference date from correlationDate in Seconds', (new Date().getTime() - new Date(maxCorrelationDate || '').getTime()) / 1000)
+
+                console.log('Max difference date from correlationDate in Seconds after save', (new Date().getTime() - new Date(maxCorrelationDate || '').getTime()) / 1000)
 
             },
         });
-        const topicPartitions = new Array(SNAPTHOT_PARTITIONS)
-            .fill(0)
-            .map((_, index) => ({ topic: 'kactors-snapshots', partition: index, offset: '0' }));
+        // const topicPartitions = new Array(SNAPTHOT_PARTITIONS)
+        //     .fill(0)
+        //     .map((_, index) => ({ topic: 'kactors-snapshots', partition: index, offset: '0' }));
 
-        topicPartitions.forEach((partition) => {
-            consumer.seek(partition);
-        });
+        // topicPartitions.forEach((partition) => {
+        //     console.log(`Seeking to partition ${partition.partition} at offset 0`, partition);
+        //     consumer.seek(partition);
+        // });
     };
 
     run().catch(console.error);
