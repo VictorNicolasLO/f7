@@ -1,0 +1,35 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kactor-system
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: kactor-system
+  template:
+    metadata:
+      labels:
+        app: kactor-system
+    spec:
+      containers:
+      - name: kactor-system
+        image: f7-app:latest
+        args: ["kactor-system"]
+        env:
+        - name: KAFKA_BROKERS
+          value: "my-cluster-kafka-bootstrap.kafka.svc:9092"
+        ports:
+        - containerPort: 6000
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: kactor-system
+spec:
+  selector:
+    app: kactor-system
+  ports:
+  - protocol: TCP
+    port: 6000
+    targetPort: 6000
