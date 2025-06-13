@@ -61,7 +61,7 @@ export const startKActorSystem = async (kafkaBrokers: string[], kActors: (new ()
         topics: [{
             topic: 'kactors',
             numPartitions: 10,
-            replicationFactor: 1,
+            replicationFactor: 3,
             configEntries: [
                 {
                     name: 'retention.ms',
@@ -69,25 +69,37 @@ export const startKActorSystem = async (kafkaBrokers: string[], kActors: (new ()
                     value: '86400000'
                 }
             ]
-        }]
+        }, 
+        {
+            topic: 'kactors-snapshots',
+            numPartitions: 10,
+            replicationFactor: 3,
+            configEntries: [
+                { name: 'cleanup.policy', value: 'compact' },
+                { name: 'retention.ms', value: '604800000' }, // 7 days
+                { name: 'retention.bytes', value: '-1' },
+            ]
+        }
+    ]
     })
     await admin.disconnect()
-    const store = createLevelDBStore('./_storage-files/kactors')
+    // const store = createLevelDBStore('./_storage-files/kactors')
+    const store = createInMemoryStore()
     const kstate = createKState(store, kafka)
 
-    kstate.fromTopic<{actorState: any, classIndex: number, correlationDate:number }>('kactors').reduce((message: KActorMessage, key, state) => {
-        const reactions: { message: KActorMessage, topic:string, key:string }[] = []
+    kstate.fromTopic<{ actorState: any, classIndex: number, correlationDate: number }>('kactors').reduce((message: KActorMessage, key, state) => {
+        const reactions: { message: KActorMessage, topic: string, key: string }[] = []
         const classIndex = message.classIndex
         const methodIndex = message.methodIndex
         const correlationDate = message.correlationDate
-        const methodName =  classesMap[kActors[classIndex].name].methodsMap.arr[methodIndex]
+        const methodName = classesMap[kActors[classIndex].name].methodsMap.arr[methodIndex]
         const actorState = state ? state.actorState : null
         const actorKey = key.split('/')[1]
         const instance = {
-            state: actorState, 
+            state: actorState,
             key: actorKey,
             ref: (clz: new () => any, key: string) => {
-               return new Proxy({}, {
+                return new Proxy({}, {
                     get(target, prop, receiver) {
                         if (prop !== 'equals' && prop !== 'classType' && prop !== 'classType') {
                             return (...args: any) => {
@@ -113,16 +125,16 @@ export const startKActorSystem = async (kafkaBrokers: string[], kActors: (new ()
             }
         }
         kActors[classIndex].prototype[methodName].apply(instance, message.args)
-     
+
         return {
             reactions,
-            state : {
-                actorState : instance.state,
+            state: {
+                actorState: instance.state,
                 classIndex,
                 correlationDate
             }
         }
     })
 
-} 
+}
 

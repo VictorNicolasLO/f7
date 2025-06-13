@@ -1,9 +1,10 @@
 import {
     Kafka
 } from 'kafkajs';
+import { servers } from './servers';
 const kafka = new Kafka({
     clientId: 'kactor-bus',
-    brokers: ['localhost:9092'],
+    brokers: servers.kafkaBrokers,
 });
 const admin = kafka.admin();
 await admin.connect();
