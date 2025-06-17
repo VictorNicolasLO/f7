@@ -6,6 +6,23 @@ metadata:
     strimzi.io/cluster: my-cluster
 spec:
   replicas: 3
+  # allowedTopologies:
+  # - matchLabelExpressions:
+  #   - key: doks.digitalocean.com/node-pool
+  #     values:
+  #     - kafka
+  template:
+    pod:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: doks.digitalocean.com/node-pool
+                operator: In
+                values:
+                - kafka
+
   roles:
     - controller
     - broker
@@ -30,6 +47,14 @@ spec:
   kafka:
     version: 4.0.0
     metadataVersion: 4.0-IV3
+    # tolerations:
+    # - key: "workload"
+    #   operator: "Equal"
+    #   value: "kafka"
+    #   effect: "NoSchedule"
+
+
+
     listeners:
       - name: plain
         port: 9092

@@ -12,15 +12,27 @@ spec:
       labels:
         app: kactor-system
     spec:
+      nodeSelector:
+        doks.digitalocean.com/node-pool: app
       containers:
       - name: kactor-system
-        image: f7-app:latest
+        image: registry.digitalocean.com/f7-repo/flash7
+
         args: ["kactor-system"]
         env:
         - name: KAFKA_BROKERS
           value: "my-cluster-kafka-bootstrap.kafka.svc:9092"
         ports:
         - containerPort: 6000
+      imagePullSecrets:
+      - name: f7-repo
+      # affinity:
+      #         podAntiAffinity:
+      #           requiredDuringSchedulingIgnoredDuringExecution:
+      #             - labelSelector:
+      #                 matchLabels:
+      #                   app: kafka  # This matches the label of the Kafka pods or namespace
+      #               topologyKey: kubernetes.io/hostname  # Prevent placement on the same node
 ---
 apiVersion: v1
 kind: Service

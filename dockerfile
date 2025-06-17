@@ -1,18 +1,18 @@
-# Use official Node.js LTS image
-FROM node:20-alpine
+# Use official Bun image
+FROM oven/bun:latest
 
 # Set working directory
 WORKDIR /usr/src/app
 
 # Copy package files and install dependencies
 COPY package*.json ./
-RUN npm install
+RUN bun install
 
 # Copy the rest of the application code
 COPY . .
 
 # Build TypeScript files
-RUN npm run build
+# RUN bun run build
 
 # Expose default ports (optional, adjust as needed)
 EXPOSE 3000 4000 5000 6000

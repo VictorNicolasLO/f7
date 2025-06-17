@@ -2,6 +2,12 @@
   "name": "flash7",
   "module": "index.ts",
   "type": "module",
+  "scripts": {
+    "build": "bun build index.ts --outdir=dist --target=node",
+    "test": "bun test",
+    "lint": "bun run eslint .",
+    "format": "bun run prettier --write ."
+  },
   "devDependencies": {
     "@types/bun": "latest"
   },

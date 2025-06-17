@@ -2,16 +2,16 @@
 
 case "$1" in
   api)
-    exec node api.ts
+    exec bun api
     ;;
   store)
-    exec node store.ts
+    exec bun store
     ;;
   viewer)
-    exec node viewer.ts
+    exec bun viewer
     ;;
   kactor-system)
-    exec node kactor-system.ts
+    exec bun kactor-system
     ;;
   *)
     echo 'Usage: api | store | viewer | kactor-system'

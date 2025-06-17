@@ -1,0 +1,49 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: store
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: store
+  template:
+    metadata:
+      labels:
+        app: store
+
+    spec:
+      nodeSelector:
+        doks.digitalocean.com/node-pool: app
+      containers:
+      - name: store
+        image: registry.digitalocean.com/f7-repo/flash7
+        args: ["store"]
+        env:
+        - name: STORE_SHARDS
+          value: "http://store.app.svc:4000"
+        - name: KAFKA_BROKERS
+          value: "my-cluster-kafka-bootstrap:9092"
+        ports:
+        - containerPort: 4000
+      imagePullSecrets:
+      - name: f7-repo
+      # affinity:
+      #         podAntiAffinity:
+      #           requiredDuringSchedulingIgnoredDuringExecution:
+      #             - labelSelector:
+      #                 matchLabels:
+      #                   app: kafka  # This matches the label of the Kafka pods or namespace
+      #               topologyKey: kubernetes.io/hostname  # Prevent placement on the same node
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: store
+spec:
+  selector:
+    app: store
+  ports:
+  - protocol: TCP
+    port: 4000
+    targetPort: 4000

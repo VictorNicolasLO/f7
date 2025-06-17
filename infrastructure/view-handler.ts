@@ -68,8 +68,8 @@ export const startViewHandler = async (
                     const actorState = valueObj.payload.actorState
                     const correlationDate: number = valueObj.payload.correlationDate
                     maxCorrelationDate = maxCorrelationDate ? maxCorrelationDate > correlationDate ? maxCorrelationDate : correlationDate : correlationDate
-                    console.log('maxCorrelationDate', maxCorrelationDate)
-                    console.log('current date', new Date().toISOString())
+                    // console.log('maxCorrelationDate', maxCorrelationDate)
+                    // console.log('current date', new Date().toISOString())
                     const actorKey = keyStr.split('/')[1]
                     try {
 

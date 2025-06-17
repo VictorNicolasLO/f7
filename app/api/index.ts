@@ -66,7 +66,7 @@ async function handlePost(req: Request, kActorBus: KActorBus) {
         return withCORS(Response.json({ error }, { status: 401, headers }), 401);
     }
     const { userIdB64 } = userData;
-    await kActorBus.send((ref) => ref(Post, postKey).post(userIdB64, content));
+    await kActorBus.send((ref) => ref(Post, ulid()).post(userIdB64, content));
     return withCORS(new Response("OK", responseInit));
 }
 
