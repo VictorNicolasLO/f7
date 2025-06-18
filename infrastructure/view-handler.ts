@@ -36,12 +36,32 @@ export const startViewHandler = async (
 
     const viewsByActor = kActors.map((clz) => views.filter((view) => view.clz === clz))
 
-    const shardClients = await Promise.all(storeShards.map((shard) => createHttp2Client(shard)));
 
 
+    const consumer = kafka.consumer({ groupId: 'view-handler', readUncommitted: false, allowAutoTopicCreation: false });
+    let isConsumerReady = false;
+    console.log(storeShards, 'store shards')
+    const shardClients = await Promise.all(storeShards.map((shard) => createHttp2Client(shard, {
+        onError: async () => {
+            console.log('Error shard view', shard)
+            if (isConsumerReady) {
+                consumer.pause([{ topic: 'kactors-snapshots' }]);
+                await new Promise((resolve) => setTimeout(resolve, 5000));
+                const topicPartitions = new Array(SNAPTHOT_PARTITIONS)
+                    .fill(0)
+                    .map((_, index) => ({ topic: 'kactors-snapshots', partition: index, offset: '0' }));
 
-    const consumer = kafka.consumer({ groupId: 'view-handler', readUncommitted: false });
+                topicPartitions.forEach((partition) => {
+                    console.log(`Seeking to partition ${partition.partition} at offset 0`, partition);
+                    consumer.seek(partition);
+                });
+                consumer.resume([{ topic: 'kactors-snapshots' }]);
+            } else {
+                console.log('Consumer is not ready yet, skipping seeking')
+            }
 
+        }
+    })));
 
     const run = async () => {
         await consumer.connect();
@@ -93,14 +113,15 @@ export const startViewHandler = async (
 
             },
         });
-        // const topicPartitions = new Array(SNAPTHOT_PARTITIONS)
-        //     .fill(0)
-        //     .map((_, index) => ({ topic: 'kactors-snapshots', partition: index, offset: '0' }));
+        isConsumerReady = true;
+        const topicPartitions = new Array(SNAPTHOT_PARTITIONS)
+            .fill(0)
+            .map((_, index) => ({ topic: 'kactors-snapshots', partition: index, offset: '0' }));
 
-        // topicPartitions.forEach((partition) => {
-        //     console.log(`Seeking to partition ${partition.partition} at offset 0`, partition);
-        //     consumer.seek(partition);
-        // });
+        topicPartitions.forEach((partition) => {
+            console.log(`Seeking to partition ${partition.partition} at offset 0`, partition);
+            consumer.seek(partition);
+        });
     };
 
     run().catch(console.error);

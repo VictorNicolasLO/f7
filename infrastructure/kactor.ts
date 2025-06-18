@@ -61,7 +61,7 @@ export const startKActorSystem = async (kafkaBrokers: string[], kActors: (new ()
         topics: [{
             topic: 'kactors',
             numPartitions: 10,
-            replicationFactor: 3,
+            replicationFactor: 1, // 3,
             configEntries: [
                 {
                     name: 'retention.ms',
@@ -73,7 +73,7 @@ export const startKActorSystem = async (kafkaBrokers: string[], kActors: (new ()
         {
             topic: 'kactors-snapshots',
             numPartitions: 10,
-            replicationFactor: 3,
+            replicationFactor: 1,// 3,
             configEntries: [
                 { name: 'cleanup.policy', value: 'compact' },
                 { name: 'retention.ms', value: '604800000' }, // 7 days

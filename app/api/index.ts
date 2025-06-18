@@ -1,4 +1,4 @@
-import { ulid } from "ulid"
+import { ulid,  isValid as iValidUlid} from "ulid"
 import type { KActorBus, QueryStore } from "../../infrastructure"
 import { Comment } from "../domain/comment/comment"
 import { Follower } from "../domain/follower/follower"
@@ -16,23 +16,16 @@ import { getAccessToken, getUserCredentials, validateAccessToken } from "./auth"
 import { USER_POST_INTERACTION_STORE } from "../views"
 import { postsWithUsersAndInteractions } from "./queries/posts-timeline"
 import { commentsWithUsers } from "./queries/comments"
-const headers = {
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-};
-const responseInit = { headers };
-
-function withCORS(response: Response, status: number = 200) {
-    // Always set CORS headers
-    headers['Access-Control-Allow-Origin'] = '*';
-    headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS';
-    headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization';
-    return { response, status };
-}
+import { headers, responseInit, withCORS } from "./utils/with-cors"
+import { validateProperties } from "./validations"
+import { validateContent, validatePassword, validateUlidKey, validateUserKey, validateUsername } from "./validations/properties"
 
 async function handleAuth(req: Request) {
     const { username, password } = await req.json();
+    const validationError = validateProperties([username, password], [validateUsername, validatePassword])
+    if (validationError) {
+        return validationError;
+    }
     const refreshToken = getUserCredentials(username, password);
     const [, accessToken] = getAccessToken(refreshToken.refreshToken);
     return withCORS(Response.json({ refreshToken, accessToken }, responseInit));
@@ -60,10 +53,14 @@ async function handleActivateUser(req: Request, kActorBus: KActorBus) {
 }
 
 async function handlePost(req: Request, kActorBus: KActorBus) {
-    const { jwt, postKey, content } = await req.json();
+    const { jwt, content } = await req.json();
     const [error, userData] = validateAccessToken(jwt);
     if (error) {
         return withCORS(Response.json({ error }, { status: 401, headers }), 401);
+    }
+    const validationError = validateProperties([content], [validateContent])
+    if (validationError) {
+        return validationError;
     }
     const { userIdB64 } = userData;
     await kActorBus.send((ref) => ref(Post, ulid()).post(userIdB64, content));
@@ -77,7 +74,16 @@ async function handleLike(req: Request, kActorBus: KActorBus) {
     if (error) {
         return withCORS(Response.json({ error }, { status: 401, headers }), 401);
     }
+    const validationError = validateProperties([postKey], [validateUlidKey])
+    if (validationError) {
+        return validationError;
+    }
     const { userIdB64 } = userData;
+    // validate postkey is ulid
+    if (!/^[0-9A-HJKMNP-TV-Z]{26}$/.test(postKey)) {
+        return withCORS(Response.json({ error: "Invalid post key format" }, { status: 400, headers }), 400);
+    }
+ 
     console.time('Handle Like');
     await kActorBus.send((ref) => ref(Like, `${userIdB64}|${postKey}`).like());
     console.timeEnd('Handle Like');
@@ -86,6 +92,10 @@ async function handleLike(req: Request, kActorBus: KActorBus) {
 
 async function handleView(req: Request, kActorBus: KActorBus) {
     const { jwt, postKey } = await req.json();
+    const validationError = validateProperties([postKey], [validateUlidKey])
+    if (validationError) {
+        return validationError;
+    }
     const [error, userData] = validateAccessToken(jwt);
     if (error) {
         return withCORS(Response.json({ error }, { status: 401, headers }), 401);
@@ -97,9 +107,22 @@ async function handleView(req: Request, kActorBus: KActorBus) {
 
 async function handleComment(req: Request, kActorBus: KActorBus) {
     const { jwt, postKey, content } = await req.json();
+    const validationError = validateProperties([postKey, content], [validateUlidKey, validateContent])
+    if (validationError) {
+        return validationError;
+    }
     const [error, userData] = validateAccessToken(jwt);
     if (error) {
         return withCORS(Response.json({ error }, { status: 401, headers }), 401);
+    }
+    if (!content || content.length === 0) {
+        return withCORS(Response.json({ error: "Content cannot be empty" }, { status: 400, headers }), 400);
+    }
+    if (content.length > 280) {
+        return withCORS(Response.json({ error: "Content exceeds maximum length of 280 characters" }, { status: 400, headers }), 400);
+    }
+    if (!iValidUlid(postKey)) {
+        return withCORS(Response.json({ error: "Invalid post key format" }, { status: 400, headers }), 400);
     }
     const { userIdB64 } = userData;
     await kActorBus.send((ref) => ref(Comment, ulid()).comment(content, postKey, userIdB64));
@@ -108,6 +131,10 @@ async function handleComment(req: Request, kActorBus: KActorBus) {
 
 async function handleFollow(req: Request, kActorBus: KActorBus) {
     const { jwt, followedKey } = await req.json();
+    const validationError = validateProperties([followedKey], [validateUserKey])
+    if (validationError) {
+        return validationError;
+    }
     const [error, userData] = validateAccessToken(jwt);
     if (error) {
         return withCORS(Response.json({ error }, { status: 401, headers }), 401);
@@ -119,6 +146,10 @@ async function handleFollow(req: Request, kActorBus: KActorBus) {
 
 async function handleUnfollow(req: Request, kActorBus: KActorBus) {
     const { jwt, followedKey } = await req.json();
+    const validationError = validateProperties([followedKey], [validateUserKey])
+    if (validationError) {
+        return validationError;
+    }
     const [error, userData] = validateAccessToken(jwt);
     if (error) {
         return withCORS(Response.json({ error }, { status: 401, headers }), 401);

@@ -13,7 +13,9 @@ export const createKActorBus = async (kafkaBrokers: string[], kActors: (new () =
         brokers: kafkaBrokers
     })
 
-    const producer = kafka.producer()
+    const producer = kafka.producer({
+        allowAutoTopicCreation: false,
+    })
 
 
     await producer.connect()
